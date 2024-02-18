@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "hms-brain-activity"
+version = "0.1.0"
+description = "An attempt at a Kaggle competition for seizure detection."
+authors = ["BlakeJC94 <blakejamescook@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pandas = "^2.2.0"
+torch = "^2.2.0"
+lightning = "^2.2.0.post0"
+torchaudio = "^2.2.0"
+torchvision = "^0.17.0"
+mne = "^1.6.1"
+plotly = "^5.19.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

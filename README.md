@@ -29,3 +29,13 @@ Training:
 * [ ] Write train script w/debug mode
 * [ ] Setup tensorboard
 * [ ] Define and test a basic config
+
+## Usage
+
+TODO
+
+```bash
+# pipx install poetry
+$ poetry install
+$ poetry shell
+```
