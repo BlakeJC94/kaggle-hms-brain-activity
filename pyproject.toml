@@ -15,6 +15,7 @@ torchvision = "^0.17.0"
 mne = "^1.6.1"
 plotly = "^5.19.0"
 pyarrow = "^15.0.0"
+clearml = "^1.14.4"
 
 
 [tool.poetry.group.dev.dependencies]
