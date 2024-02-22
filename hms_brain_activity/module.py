@@ -54,7 +54,7 @@ class MainModule(pl.LightningModule):
         }
         self.metrics = nn.ModuleDict(
             {
-                k: nn.ModuleDict(deepcopy(metrics))
+                f"{k}_metrics": nn.ModuleDict(deepcopy(metrics))
                 for k in ["train", "sanity_check", "validate", "test", "predict"]
             }
         )
@@ -112,7 +112,7 @@ class MainModule(pl.LightningModule):
         if self.metrics_preprocessor is not None:
             y_pred, y = self.metrics_preprocessor(y_pred, y)
 
-        metrics = self.metrics.get(stage, {})
+        metrics = getattr(self.metrics, f"{stage}_metrics", {})
         for metric_name, metric in metrics.items():
             if isinstance(metric, MeanMetric):
                 metric.update(y_pred)
