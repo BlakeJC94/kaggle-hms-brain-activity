@@ -30,11 +30,13 @@ Training:
     * [x] Write train script w/debug mode
     * [x] Setup tensorboard
     * [x] Define and test a basic config
-    * [ ] Scale data
-    * [ ] Implement a basic Resnet for timeseries
+    * [x] Scale data
+    * [ ] Upgrade placeholder model
     * [ ] Implement random sagital flip
     * [ ] Implement a montage function
+    * [ ] Implement a basic Resnet for timeseries
     * [ ] Train a basic resnet for classification to a "pretty good" degree
+    * [ ] Write evaluation script and prediction writer for submission
 * Classification vs Segmentation (more samples good?)
     * [ ] Expand dataset to segmentation output (will need to rework iteration)
     * [ ] Train same resnet and see how it compares
