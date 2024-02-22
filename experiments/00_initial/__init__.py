@@ -87,6 +87,8 @@ def config(hparams) -> ModelConfig:
             [
                 t.ToTensor(),
                 t.VotesToProbabilities(),
+                t.ScaleEEG(1 / (35 * 1.5)),
+                t.TanhClipTensor(4),
             ]
         ),
     )
