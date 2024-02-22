@@ -210,7 +210,7 @@ def set_hparams_debug_overrides(hparams):
     hparams["task"]["init"]["reuse_last_task_id"] = True
     # Config overrides
     hparams["config"]["batch_size"] = 2
-    hparams["config"]["num_workers"] = 2
+    hparams["config"]["num_workers"] = 0
     # Trainer overrides
     hparams["trainer"]["init"]["overfit_batches"] = 1
     hparams["trainer"]["init"]["log_every_n_steps"] = 1
