@@ -152,7 +152,7 @@ class MainModule(pl.LightningModule):
         return self.trainer.state.stage.value
 
     ## Train methods
-    def training_step(self, batch, batch_idx, _dataloader_idx):
+    def training_step(self, batch, batch_idx, _dataloader_idx=0):
         x, md = batch
         y_pred = self.forward(x)
         loss = self.loss_calculate_and_log(y_pred, md)
@@ -174,7 +174,7 @@ class MainModule(pl.LightningModule):
         self.metrics_compute_and_log()
 
     ## Test methods
-    def test_step(self, batch, batch_idx, _dataloader_idx):
+    def test_step(self, batch, batch_idx, _dataloader_idx=0):
         x, md = batch
         y_pred = self.forward(x)
         loss = self.loss_calculate_and_log(y_pred, md)
