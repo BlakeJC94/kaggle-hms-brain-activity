@@ -14,7 +14,7 @@ from hms_brain_activity.metrics import PooledMean
 LRScheduler: TypeAlias = lr_scheduler._LRScheduler
 
 
-class MainModule(pl.LightingModule):
+class MainModule(pl.LightningModule):
     def __init__(
         self,
         model: nn.Module,
