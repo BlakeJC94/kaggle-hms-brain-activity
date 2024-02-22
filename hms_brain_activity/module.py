@@ -150,6 +150,7 @@ class MainModule(pl.LightningModule):
                     iteration=self.current_epoch,
                     figure=fig,
                 )
+                fig.close()
             else:
                 clearml_logger.report_plotly(
                     f"{name} ({stage})",
