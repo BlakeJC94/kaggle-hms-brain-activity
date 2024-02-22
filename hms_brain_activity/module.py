@@ -88,8 +88,9 @@ class MainModule(pl.LightningModule):
         return self.model(*args, **kwargs)
 
     ## Metric and loss logging methods
-    def loss_calculate_and_log(self, y_pred: Any, md: Any, stage: str) -> torch.Tensor:
+    def loss_calculate_and_log(self, y_pred: Any, md: Any) -> torch.Tensor:
         y = md["y"]
+        stage = self.get_stage()
         loss = self.loss_function(y_pred, y)
         if isinstance(loss, dict):
             self._log_metric(loss, "loss", stage, batch_size=len(y_pred))
@@ -104,9 +105,10 @@ class MainModule(pl.LightningModule):
         return loss
 
     @torch.no_grad()
-    def metrics_update_and_log(self, y_pred: Any, md: Any, stage: str) -> None:
+    def metrics_update_and_log(self, y_pred: Any, md: Any) -> None:
         """Calculate and log metrics for a batch of predictions against target labels."""
         y = md["y"]
+        stage = self.get_stage()
         if self.metrics_preprocessor is not None:
             y_pred, y = self.metrics_preprocessor(y_pred, y)
 
@@ -119,8 +121,10 @@ class MainModule(pl.LightningModule):
             if getattr(metric, "compute_on_batch", True):
                 self._log_metric(metric, metric_name, stage, batch_size=len(y_pred))
 
-    def metrics_compute_and_log(self, stage: str):
-        metrics = self.metrics.get(stage, {})
+    @torch.no_grad()
+    def metrics_compute_and_log(self):
+        stage = self.get_stage()
+        metrics = getattr(self.metrics, f"{stage}_metrics", {})
         for metric_name, metric in metrics.items():
             self._log_metric(metric, metric_name, stage, epoch=True)
             metric.reset()
@@ -144,38 +148,38 @@ class MainModule(pl.LightningModule):
                 iteration=self.current_epoch,
             )
 
+    def get_stage(self) -> str:
+        return self.trainer.state.stage.value
+
     ## Train methods
     def training_step(self, batch, batch_idx, _dataloader_idx):
         x, md = batch
         y_pred = self.forward(x)
-        loss = self.loss_calculate_and_log(y_pred, md, stage=self.trainer.state.stage)
-        self.metrics_update_and_log(y_pred, md, stage=self.trainer.state.stage)
+        loss = self.loss_calculate_and_log(y_pred, md)
+        self.metrics_update_and_log(y_pred, md)
         return {"loss": loss, "metadata": md}
 
-    @torch.no_grad()
     def on_train_epoch_end(self):
-        self.compute_and_log_metrics(stage=self.trainer.state.stage)
+        self.metrics_compute_and_log()
 
     ## Val methods
-    def validation_step(self, batch, batch_idx, _dataloader_idx):
+    def validation_step(self, batch, batch_idx, _dataloader_idx=0):
         x, md = batch
         y_pred = self.forward(x)
-        loss = self.loss_calculate_and_log(y_pred, md, stage=self.trainer.state.stage)
-        self.metrics_update_and_log(y_pred, md, stage=self.trainer.state.stage)
+        loss = self.loss_calculate_and_log(y_pred, md)
+        self.metrics_update_and_log(y_pred, md)
         return {"loss": loss, "metadata": md}
 
-    @torch.no_grad()
     def on_validation_epoch_end(self):
-        self.compute_and_log_metrics(stage=self.trainer.state.stage)
+        self.metrics_compute_and_log()
 
     ## Test methods
     def test_step(self, batch, batch_idx, _dataloader_idx):
         x, md = batch
         y_pred = self.forward(x)
-        loss = self.loss_calculate_and_log(y_pred, md, stage=self.trainer.state.stage)
-        self.metrics_update_and_log(y_pred, md, stage=self.trainer.state.stage)
+        loss = self.loss_calculate_and_log(y_pred, md)
+        self.metrics_update_and_log(y_pred, md)
         return {"loss": loss, "metadata": md}
 
-    @torch.no_grad()
     def on_test_epoch_end(self):
-        self.compute_and_log_metrics(stage=self.trainer.state.stage)
+        self.metrics_compute_and_log()
