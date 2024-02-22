@@ -141,12 +141,22 @@ class MainModule(pl.LightningModule):
             self.log(f"{name}/{stage}", result, batch_size=batch_size)
 
         if epoch and hasattr(metric, "plot") and (clearml_logger := Logger.current_logger()) is not None:
-            clearml_logger.report_plotly(
-                f"{name} ({stage})",
-                stage,
-                metric.plot(),
-                iteration=self.current_epoch,
-            )
+            plot = metric.plot()
+            if isinstance(plot, tuple):
+                fig, _ax = plot
+                clearml_logger.report_matplotlib_figure(
+                    f"{name} ({stage})",
+                    stage,
+                    iteration=self.current_epoch,
+                    figure=fig,
+                )
+            else:
+                clearml_logger.report_plotly(
+                    f"{name} ({stage})",
+                    stage,
+                    iteration=self.current_epoch,
+                    figure=metric.plot(),
+                )
 
     def get_stage(self) -> str:
         return self.trainer.state.stage.value
