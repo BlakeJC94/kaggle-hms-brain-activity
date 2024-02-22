@@ -63,13 +63,13 @@ class HmsLocalClassificationDataset(Dataset):
         data = data[self.channel_names]
         data = data.iloc[start : start + duration].to_numpy().transpose()
 
-        label = annotation[self.vote_names].to_numpy()
+        label = annotation[self.vote_names].astype(int).to_numpy()
         metadata = {
-            "y": label,
+            "y": np.expand_dims(label, -1),
             "patient_id": annotation['patient_id'],
         }
 
         if self.transform:
             data, metadata = self.transform(data, metadata)
 
-        return data, label
+        return data, metadata
