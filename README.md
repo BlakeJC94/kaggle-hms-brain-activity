@@ -32,14 +32,30 @@ Training:
     * [x] Define and test a basic config
     * [x] Scale data
     * [x] Upgrade placeholder model
-    * [ ] Implement random sagital flip
+    * [ ] Implement random sagittal flip
     * [ ] Implement a montage function
     * [ ] Implement a basic Resnet for timeseries
     * [ ] Train a basic resnet for classification to a "pretty good" degree
     * [ ] Write evaluation script and prediction writer for submission
 * Classification vs Segmentation (more samples good?)
     * [ ] Expand dataset to segmentation output (will need to rework iteration)
-    * [ ] Train same resnet and see how it compares
+    * [ ] Train same resnet backbone
+    * [ ] Tune model and see how it compares to classification
+* Spectrograms
+    * [ ] Implement spectrogram transform
+    * [ ] Update to a 2d model with a similar backbone
+    * [ ] Tune model and see how it compares to 1d models
+    * [ ] Compare with multitaper spectrogram
+* Ensembling
+    * [ ] Freeze 1d and 2d models and train an ensemble
+    * [ ] Use pretrained weights and unfreeze train an ensemble and compare
+* TUH pretraining
+    * [ ] Match up labels in TUH with HMS task
+    * [ ] Implement TUH dataset
+    * [ ] Pretrain a model using best approach so far for 1d data
+    * [ ] Pretrain a model using best approach so far for 2d data
+    * [ ] Pretrain a model using best approach so far for ensemble frozen
+    * [ ] Pretrain a model using best approach so far for ensemble unfrozen
 
 
 ## Usage
