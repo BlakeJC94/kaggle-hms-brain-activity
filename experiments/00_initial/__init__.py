@@ -55,9 +55,11 @@ def config(hparams) -> ModelConfig:
     annotations = pd.read_csv("./data/hms/train.csv")
 
     # TODO Find a better subsampling strategy
-    val_patient_ids = set(annotations['patient_id'].unique().sample(frac=0.2, random_seed=0))
-    val_annotations = annotations[annotations['patient_ids'].isin(val_patient_ids)]
-    train_annotations = annotations[~annotations['patient_ids'].isin(val_patient_ids)]
+    val_patient_ids = set(
+        annotations["patient_id"].drop_duplicates().sample(frac=0.2, random_state=0)
+    )
+    val_annotations = annotations[annotations["patient_id"].isin(val_patient_ids)]
+    train_annotations = annotations[~annotations["patient_id"].isin(val_patient_ids)]
 
     data_dir = "./data/hms/train_eegs"
 
