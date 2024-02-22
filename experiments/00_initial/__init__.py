@@ -103,7 +103,7 @@ def config(hparams) -> ModelConfig:
         ),
         callbacks=[
             pl.callbacks.EarlyStopping(
-                monitor="loss/val",
+                monitor=hparams["config"]["monitor"],
                 min_delta=0.0001,
                 patience=hparams["config"]["patience"],
                 verbose=True,

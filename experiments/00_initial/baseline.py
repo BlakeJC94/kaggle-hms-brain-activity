@@ -3,7 +3,7 @@ hparams = {
         "init": {
             "project_name": "HMS",
         },
-        # "parent_task_id": "2e6cb27f9db54a28bf841a3418794629",
+        # "parent_task_id": "xxx",
     },
     "checkpoint": {
         "checkpoint_task_id": None,
@@ -20,10 +20,11 @@ hparams = {
         "weight_decay": 0.01,
         "batch_size": 8,
         "patience": 20,
-        "monitor": "loss/val",
+        "monitor": "loss/validate",
     },
 }
 
+# Smoke test
 if __name__ == "__main__":
     from pathlib import Path
     exec((Path(__file__).parent / "__init__.py").open().read())
