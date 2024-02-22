@@ -13,7 +13,7 @@ from .globals import CHANNEL_NAMES, VOTE_NAMES
 logger = logging.getLogger(__name__)
 
 
-class HmsLocalDataset(Dataset):
+class HmsLocalClassificationDataset(Dataset):
     """Dataset class for loading time series data"""
 
     sample_rate = 200.0  # Hz
@@ -53,19 +53,23 @@ class HmsLocalDataset(Dataset):
         return len(self.annotations)
 
     def __getitem__(self, idx: int) -> Tuple[np.ndarray, np.ndarray]:
-        md = self.annotations.iloc[idx]
-        start = int(md["eeg_label_offset_seconds"] * self.sample_rate)
+        annotation = self.annotations.iloc[idx]
+        start = int(annotation["eeg_label_offset_seconds"] * self.sample_rate)
         duration = int(self.sample_rate * self.sample_secs)
 
-        eeg_id = md["eeg_id"]
+        eeg_id = annotation["eeg_id"]
         eeg_path = self.data_dir / f"{eeg_id}.parquet"
         data = pd.read_parquet(eeg_path)
         data = data[self.channel_names]
-        data = data.iloc[start : start + duration].to_numpy()
+        data = data.iloc[start : start + duration].to_numpy().transpose()
 
-        label = md[self.vote_names].to_numpy()
+        label = annotation[self.vote_names].to_numpy()
+        metadata = {
+            "y": label,
+            "patient_id": annotation['patient_id'],
+        }
 
         if self.transform:
-            data, label = self.transform(data, label)
+            data, metadata = self.transform(data, metadata)
 
         return data, label
