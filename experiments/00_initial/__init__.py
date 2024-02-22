@@ -16,13 +16,30 @@ from hms_brain_activity import transforms as t
 
 
 class PlaceholderModel(nn.Module):
-    def __init__(self, num_channels, num_classes):
+    def __init__(self, num_channels, num_classes, num_filters=32):
         super().__init__()
-        self.conv = nn.Conv1d(num_channels, num_classes, kernel_size=1)
+        self.num_channels = num_channels
+        self.num_classes = num_classes
+        self.num_filters = num_filters
+
+        self.conv1 = nn.Conv1d(
+            in_channels=num_channels, out_channels=num_filters, kernel_size=7, padding=3, bias=False
+        )
+        self.bn1 = nn.BatchNorm1d(num_features=num_filters)
+        self.relu = nn.ReLU()
+        self.conv2 = nn.Conv1d(
+            in_channels=num_filters, out_channels=num_filters, kernel_size=3, padding=1, bias=False
+        )
+        self.bn2 = nn.BatchNorm1d(num_features=num_filters)
+        self.conv3 = nn.Conv1d(
+            in_channels=num_filters, out_channels=num_classes, kernel_size=1, bias=True
+        )
         self.avg = nn.AdaptiveAvgPool1d(1)
 
     def forward(self, x):
-        x = self.conv(x)
+        x = self.relu(self.bn1(self.conv1(x)))
+        x = self.relu(self.bn2(self.conv2(x)))
+        x = self.conv3(x)
         x = self.avg(x)
         return nn.functional.softmax(x, dim=1)
 

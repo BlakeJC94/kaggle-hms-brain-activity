@@ -31,7 +31,7 @@ Training:
     * [x] Setup tensorboard
     * [x] Define and test a basic config
     * [x] Scale data
-    * [ ] Upgrade placeholder model
+    * [x] Upgrade placeholder model
     * [ ] Implement random sagital flip
     * [ ] Implement a montage function
     * [ ] Implement a basic Resnet for timeseries
