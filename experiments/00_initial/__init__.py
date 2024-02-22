@@ -19,11 +19,12 @@ class PlaceholderModel(nn.Module):
     def __init__(self, num_channels, num_classes):
         super().__init__()
         self.conv = nn.Conv1d(num_channels, num_classes, kernel_size=1)
-        self.mean = nn.AvgPool1d()
+        self.avg = nn.AdaptiveAvgPool1d(1)
 
     def forward(self, x):
         x = self.conv(x)
-        return self.avg(x)
+        x = self.avg(x)
+        return nn.functional.softmax(x, dim=1)
 
 
 def config(hparams) -> ModelConfig:
