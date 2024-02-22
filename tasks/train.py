@@ -105,7 +105,7 @@ def train(
         trainer.validate(config.model, dataloaders=config.val_dataloader)
         trainer.fit(
             config.model,
-            train_dataloaders=config.tran_dataloader,
+            train_dataloaders=config.train_dataloader,
             val_dataloaders=config.val_dataloader,
             **trainer_fit_kwargs,
         )
