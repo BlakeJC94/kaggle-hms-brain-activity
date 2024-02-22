@@ -67,6 +67,7 @@ class HmsLocalClassificationDataset(Dataset):
         metadata = {
             "y": np.expand_dims(label, -1),
             "patient_id": annotation['patient_id'],
+            "eeg_id": annotation['eeg_id'],
         }
 
         if self.transform:
