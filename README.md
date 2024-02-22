@@ -17,18 +17,28 @@ https://www.kaggle.com/competitions/hms-harmful-brain-activity-classification/ov
 
 EDA:
 * [ ] Explore distribution of labels in the training dataset
-* [ ] How many channels are in the files?
-* [ ] Table of durations per study
+* [x] How many channels are in the files?
+* [x] Table of durations per study
 * [ ] Plot some example "other" regions
-* [ ] (optional) Figure out parameters used for the spectrogram
+* [ ] Figure out how to train/val split by patient_id and maintain label balance
 
 Training:
-* [ ] Create a torch dataset to load time series data from local directory
-* [ ] Create a model scaffold with pytorch lighting
-* [ ] Define a toynet for segmentation
-* [ ] Write train script w/debug mode
-* [ ] Setup tensorboard
-* [ ] Define and test a basic config
+* Foundation with a classification approach
+    * [x] Create a torch dataset to load time series data from local directory
+    * [x] Create a model scaffold with pytorch lighting
+    * [x] Define a toynet for classification
+    * [x] Write train script w/debug mode
+    * [x] Setup tensorboard
+    * [x] Define and test a basic config
+    * [ ] Scale data
+    * [ ] Implement a basic Resnet for timeseries
+    * [ ] Implement random sagital flip
+    * [ ] Implement a montage function
+    * [ ] Train a basic resnet for classification to a "pretty good" degree
+* Classification vs Segmentation (more samples good?)
+    * [ ] Expand dataset to segmentation output (will need to rework iteration)
+    * [ ] Train same resnet and see how it compares
+
 
 ## Usage
 
