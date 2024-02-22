@@ -193,8 +193,6 @@ def setup_task(
     logger.info("Setting hparams on config")
     try:
         config = config_fn(hparams)
-        if debug:
-            breakpoint()
     except Exception as err:
         if debug:
             logger.error("Couldn't import config")
