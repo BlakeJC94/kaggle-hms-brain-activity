@@ -92,13 +92,13 @@ def config(hparams) -> ModelConfig:
         train_dataloader=DataLoader(
             train_dataset,
             batch_size=hparams["config"]["batch_size"],
-            num_workers=hparams["config"].get("num_workers") or (os.cpu_count() or 0),
+            num_workers=hparams["config"].get("num_workers", os.cpu_count()) or 0,
             shuffle=True,
         ),
         val_dataloader=DataLoader(
             val_dataset,
             batch_size=hparams["config"]["batch_size"],
-            num_workers=hparams["config"].get("num_workers") or (os.cpu_count() or 0),
+            num_workers=hparams["config"].get("num_workers", os.cpu_count()) or 0,
             shuffle=False,
         ),
         callbacks=[
