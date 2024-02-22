@@ -69,6 +69,7 @@ def config(hparams) -> ModelConfig:
         transform=Compose(
             [
                 t.ToTensor(),
+                t.VotesToProbabilities(),
             ]
         ),
     )
@@ -79,6 +80,7 @@ def config(hparams) -> ModelConfig:
         transform=Compose(
             [
                 t.ToTensor(),
+                t.VotesToProbabilities(),
             ]
         ),
     )
