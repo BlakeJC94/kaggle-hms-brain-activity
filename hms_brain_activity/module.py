@@ -64,6 +64,8 @@ class MainModule(pl.LightningModule):
         self.save_hyperparameters(
             ignore=[
                 "loss_function",
+                "optimizer_factory",
+                "scheduler_factory",
                 "metrics",
                 "model",
                 "metrics_preprocessor",
