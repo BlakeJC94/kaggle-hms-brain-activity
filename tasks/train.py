@@ -22,24 +22,26 @@ def main() -> str:
 def parse() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("hparams_path")
-    parser.add_argument("-d", "--debug", action="store_true", default=False)
+    parser.add_argument("-d", "--dev-run", action="store_true", default=False)
+    parser.add_argument("-D", "--pdb", action="store_true", default=False)
     return parser.parse_args()
 
 
 def train(
     hparams_path: str,
-    debug: bool = False,
+    dev_run: bool = False,
+    pdb: bool = False,
 ) -> str:
     """Choo choo"""
     pl.seed_everything(0, workers=True)
 
-    hparams, task, config = setup_task(hparams_path, debug)
+    hparams, task, config = setup_task(hparams_path, dev_run, pdb)
     save_dir = get_task_artifacts_dir(task) / "train"
     weights_dir = save_dir / "model_weights"
 
     # Initialise callbacks
     callbacks = [EpochProgress(), pl.callbacks.LearningRateMonitor(), *config.callbacks]
-    if not debug:
+    if not dev_run:
         callbacks = [
             pl.callbacks.ModelCheckpoint(
                 weights_dir,
@@ -110,7 +112,7 @@ def train(
             **trainer_fit_kwargs,
         )
     except Exception as err:
-        if debug:
+        if pdb:
             model = config.model
             train_ds = config.train_dataloader.dataset
             val_ds = config.val_dataloader.dataset
@@ -121,7 +123,9 @@ def train(
 
 
 def setup_task(
-    hparams_path: Path, debug: bool
+    hparams_path: Path,
+    dev_run: bool,
+    pdb: bool,
 ) -> Tuple[Dict[str, Any], Task, ModelConfig]:
     # Import hparams
     hparams = import_script_as_module(hparams_path).hparams
@@ -133,10 +137,10 @@ def setup_task(
     project_name = hparams["task"]["init"]["project_name"]
 
     # Set debug overrides
-    if debug:
-        logger.info("DEBUG MODE")
+    if dev_run:
+        logger.info("DEV RUN")
         hparams = set_hparams_debug_overrides(hparams)
-        task_name = f"DEBUG: {task_name}"
+        task_name = f"DEV RUN: {task_name}"
         project_name = "test"
 
     # Halt if task is currently running for project_name/task_name
@@ -155,7 +159,7 @@ def setup_task(
     logger.info(f"{continue_last_task = }")
 
     # Set debug overrides
-    if debug and continue_last_task:
+    if dev_run and continue_last_task:
         logger.info("(Continuing last task is disabled for debug runs)")
         continue_last_task = False
 
@@ -194,7 +198,7 @@ def setup_task(
     try:
         config = config_fn(hparams)
     except Exception as err:
-        if debug:
+        if pdb:
             logger.error("Couldn't import config")
             breakpoint()
         raise err
