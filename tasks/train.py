@@ -47,7 +47,6 @@ def train(
     callbacks = [
         EpochProgress(),
         pl.callbacks.LearningRateMonitor(),
-        pl.callbacks.DeviceStatsMonitor(cpu_stats=True),
         *config.get("callbacks", []),
     ]
     if not dev_run:
