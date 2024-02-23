@@ -100,6 +100,7 @@ def config(hparams):
         annotations=train_annotations,
         transform=Compose(
             [
+                t.FillNanNpArray(0),
                 t.PadNpArray(
                     t.BandPassNpArray(
                         hparams["config"]["bandpass_low"],
@@ -121,6 +122,7 @@ def config(hparams):
         annotations=val_annotations,
         transform=Compose(
             [
+                t.FillNanNpArray(0),
                 t.PadNpArray(
                     t.BandPassNpArray(
                         hparams["config"]["bandpass_low"],
