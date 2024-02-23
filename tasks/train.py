@@ -70,7 +70,6 @@ def train(
         "accelerator": "gpu" if torch.cuda.is_available() else "cpu",
         "callbacks": callbacks,
         "num_sanity_val_steps": 0,
-        "inference_mode": False,
         "max_epochs": -1,
         **trainer_init_kwargs,
     }
