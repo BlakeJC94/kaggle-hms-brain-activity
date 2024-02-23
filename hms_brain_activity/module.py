@@ -141,7 +141,11 @@ class MainModule(pl.LightningModule):
         elif result is not None:
             self.log(f"{name}/{stage}", result, batch_size=batch_size)
 
-        if epoch and hasattr(metric, "plot") and (clearml_logger := Logger.current_logger()) is not None:
+        if (
+            epoch
+            and hasattr(metric, "plot")
+            and (clearml_logger := Logger.current_logger()) is not None
+        ):
             plot = metric.plot()
             if isinstance(plot, tuple):
                 fig, _ax = plot
