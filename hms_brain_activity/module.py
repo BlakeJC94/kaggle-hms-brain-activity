@@ -3,6 +3,7 @@ from typing import Callable, Optional, TypeAlias, Dict, List, Any
 
 import pytorch_lightning as pl
 import torch
+import matplotlib
 from matplotlib import pyplot as plt
 from clearml import Logger
 from torch import nn
@@ -11,6 +12,8 @@ from torchmetrics import Metric, MeanMetric
 
 from hms_brain_activity.metrics import PooledMean
 
+
+matplotlib.use("Agg")
 
 LRScheduler: TypeAlias = lr_scheduler._LRScheduler
 
