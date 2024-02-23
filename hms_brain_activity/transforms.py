@@ -33,15 +33,22 @@ class TanhClipTensor(nn.Module):
         return x, md
 
 
-class ScaleEEG(nn.Module):
+class _BaseScaleChannels(nn.Module):
     def __init__(self, scalar: float):
         super().__init__()
-        self.scalar = scalar
+        self.scalar = torch.Tensor(scalar)
 
     def forward(self, x, md):
-        x[:-1, ...] = x[:-1, ...] / self.scalar
+        x_slice = [slice(None)] * x.ndim
+        x_slice[-2] = self.ch_slice
+        x[x_slice] = x[x_slice] / self.scalar
         return x, md
 
+class ScaleEEG(_BaseScaleChannels):
+    ch_slice = slice(-1)
+
+class ScaleECG(_BaseScaleChannels):
+    ch_slice = slice(-1, None)
 
 class _BaseMontage(nn.Module):
     montage: List[Tuple[str, str]]
@@ -113,4 +120,14 @@ class RandomScale(nn.Module):
         size = x.shape[:-1] if self.per_channel else x.shape[:-2]
         scale = self.min_scale + (self.max_scale - self.min_scale) * torch.rand(size)
         x = x * scale.unsqueeze(-1)
+        return x, md
+
+
+class FillNans(nn.Module):
+    def __init__(self, value=0):
+        super().__init__()
+        self.value = value
+
+    def forward(self, x, md):
+        x = torch.nan_to_num(x, self.value)
         return x, md
