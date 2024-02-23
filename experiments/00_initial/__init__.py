@@ -51,7 +51,21 @@ def config(hparams) -> ModelConfig:
     num_classes = 6
 
     module = MainModule(
-        PlaceholderModel(num_channels=num_channels, num_classes=num_classes),
+        nn.Sequential(
+            taf.Pad(
+                taf.BandPass(
+                    hparams["config"]["bandpass_low"],
+                    hparams["config"]["bandpass_high"],
+                    hparams["config"]["sample_rate"],
+                ),
+                padlen=hparams["config"]["sample_rate"],
+            ),
+            t.DoubleBananaMontage(),
+            t.ScaleEEG(1 / (35 * 1.5)),
+            t.ScaleECG(1 / 1e4),
+            t.TanhClipTensor(4),
+            PlaceholderModel(num_channels=num_channels, num_classes=num_classes),
+        )
         loss_function=nn.MSELoss(),
         metrics={
             "accuracy": MulticlassAccuracy(num_classes=num_classes),
