@@ -77,7 +77,7 @@ class _BaseMontage(nn.Module):
             if ch_idx_2 is not None:
                 montage_mat[ch_idx_2, j] = -1
 
-        self.montage_mat = montage_mat
+        self.register_buffer("montage_mat", montage_mat)
 
     def forward(self, x, md=None):
         x = torch.matmul(
