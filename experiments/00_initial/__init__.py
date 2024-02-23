@@ -4,7 +4,7 @@ from functools import partial
 
 import pytorch_lightning as pl
 import pandas as pd
-import torchaudio_filters import as taf
+import torchaudio_filters as taf
 from torch import nn, optim
 from torch.utils.data import DataLoader
 from torchmetrics import KLDivergence
@@ -25,12 +25,20 @@ class PlaceholderModel(nn.Module):
         self.num_filters = num_filters
 
         self.conv1 = nn.Conv1d(
-            in_channels=num_channels, out_channels=num_filters, kernel_size=7, padding=3, bias=False
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=7,
+            padding=3,
+            bias=False,
         )
         self.bn1 = nn.BatchNorm1d(num_features=num_filters)
         self.relu = nn.ReLU()
         self.conv2 = nn.Conv1d(
-            in_channels=num_filters, out_channels=num_filters, kernel_size=3, padding=1, bias=False
+            in_channels=num_filters,
+            out_channels=num_filters,
+            kernel_size=3,
+            padding=1,
+            bias=False,
         )
         self.bn2 = nn.BatchNorm1d(num_features=num_filters)
         self.conv3 = nn.Conv1d(
@@ -65,7 +73,7 @@ def config(hparams) -> ModelConfig:
             t.ScaleECG(1 / 1e4),
             t.TanhClipTensor(4),
             PlaceholderModel(num_channels=num_channels, num_classes=num_classes),
-        )
+        ),
         loss_function=nn.MSELoss(),
         metrics={
             "accuracy": MulticlassAccuracy(num_classes=num_classes),
