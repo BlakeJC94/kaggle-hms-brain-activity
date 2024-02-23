@@ -1,14 +1,12 @@
 import os
 from collections import OrderedDict
-from pathlib import Path
 from functools import partial
 
 import pytorch_lightning as pl
 import pandas as pd
-import torchaudio_filters as taf
 from torch import nn, optim
 from torch.utils.data import DataLoader
-from torchmetrics import KLDivergence
+from torchmetrics import MeanSquaredError
 from torchvision.transforms.v2 import Compose
 
 from hms_brain_activity.module import MainModule
@@ -42,7 +40,10 @@ class BasicBlock1d(nn.Module):
         if in_channels != out_channels or stride != 1:
             self.projection_shortcut = nn.Sequential(
                 nn.Conv1d(
-                    in_channels=in_channels, out_channels=out_channels, kernel_size=1, stride=stride
+                    in_channels=in_channels,
+                    out_channels=out_channels,
+                    kernel_size=1,
+                    stride=stride,
                 ),
                 nn.BatchNorm1d(num_features=out_channels),
             )
@@ -58,7 +59,7 @@ class BasicBlock1d(nn.Module):
         return x
 
 
-class ResNet1d18Backbone(nn.Sequential):
+class ResNet1d34Backbone(nn.Sequential):
     channels = (64, 128, 256, 512)
 
     def __init__(self, in_channels: int):
@@ -85,6 +86,7 @@ class ResNet1d18Backbone(nn.Sequential):
             mp=nn.MaxPool1d(kernel_size=3, stride=2, padding=0),
             conv2_1=BasicBlock1d(self.channels[0], self.channels[0], stride=1),
             conv2_2=BasicBlock1d(in_channels2, self.channels[0], stride=1),
+            conv2_3=BasicBlock1d(in_channels2, self.channels[0], stride=1),
         )
         self.conv2 = nn.Sequential(conv2)
 
@@ -93,6 +95,8 @@ class ResNet1d18Backbone(nn.Sequential):
         conv3 = OrderedDict(
             conv3_1=BasicBlock1d(in_channels2, self.channels[1], stride=2),
             conv3_2=BasicBlock1d(in_channels3, self.channels[1], stride=1),
+            conv3_3=BasicBlock1d(in_channels3, self.channels[1], stride=1),
+            conv3_4=BasicBlock1d(in_channels3, self.channels[1], stride=1),
         )
         self.conv3 = nn.Sequential(conv3)
 
@@ -101,6 +105,10 @@ class ResNet1d18Backbone(nn.Sequential):
         conv4 = OrderedDict(
             conv4_1=BasicBlock1d(in_channels3, self.channels[2], stride=2),
             conv4_2=BasicBlock1d(in_channels4, self.channels[2], stride=1),
+            conv4_3=BasicBlock1d(in_channels4, self.channels[2], stride=1),
+            conv4_4=BasicBlock1d(in_channels4, self.channels[2], stride=1),
+            conv4_5=BasicBlock1d(in_channels4, self.channels[2], stride=1),
+            conv4_6=BasicBlock1d(in_channels4, self.channels[2], stride=1),
         )
         self.conv4 = nn.Sequential(conv4)
 
@@ -109,8 +117,10 @@ class ResNet1d18Backbone(nn.Sequential):
         conv5 = OrderedDict(
             conv5_1=BasicBlock1d(in_channels4, self.channels[3], stride=2),
             conv5_2=BasicBlock1d(in_channels5, self.channels[3], stride=1),
+            conv5_3=BasicBlock1d(in_channels5, self.channels[3], stride=1),
         )
         self.conv5 = nn.Sequential(conv5)
+
 
 class ClassificationHead1d(nn.Sequential):
     def __init__(self, num_channels, num_classes):
@@ -121,31 +131,24 @@ class ClassificationHead1d(nn.Sequential):
         self.avg_pool = nn.AdaptiveAvgPool1d(1)
         self.fc = nn.Linear(num_channels, num_classes)
 
+
 def config(hparams):
-    num_channels = 20
+    num_channels = 19
     num_classes = 6
 
     module = MainModule(
         nn.Sequential(
-            taf.Pad(
-                taf.BandPass(
-                    hparams["config"]["bandpass_low"],
-                    hparams["config"]["bandpass_high"],
-                    hparams["config"]["sample_rate"],
-                ),
-                padlen=hparams["config"]["sample_rate"],
-            ),
             t.DoubleBananaMontage(),
             t.ScaleEEG(1 / (35 * 1.5)),
             t.ScaleECG(1 / 1e4),
             t.TanhClipTensor(4),
-            ResNet1d18Backbone(num_channels),
-            ClassificationHead1d(ResNet1d18Backbone.channels[-1], num_classes),
+            ResNet1d34Backbone(num_channels),
+            ClassificationHead1d(ResNet1d34Backbone.channels[-1], num_classes),
         ),
-        loss_function=nn.MSELoss(),
+        loss_function=nn.KLDivLoss(reduction="batchmean"),
         metrics_preprocessor=lambda y_pred, y: (y_pred.squeeze(-1), y.squeeze(-1)),
         metrics={
-            "kl_divergence": KLDivergence(),
+            "mse": MeanSquaredError(),
         },
         optimizer_factory=partial(
             optim.AdamW,
@@ -178,6 +181,15 @@ def config(hparams):
         annotations=train_annotations,
         transform=Compose(
             [
+                t.FillNanNpArray(0),
+                t.PadNpArray(
+                    t.BandPassNpArray(
+                        hparams["config"]["bandpass_low"],
+                        hparams["config"]["bandpass_high"],
+                        hparams["config"]["sample_rate"],
+                    ),
+                    padlen=hparams["config"]["sample_rate"],
+                ),
                 t.ToTensor(),
                 t.RandomSaggitalFlip(),
                 t.RandomScale(),
@@ -191,6 +203,15 @@ def config(hparams):
         annotations=val_annotations,
         transform=Compose(
             [
+                t.FillNanNpArray(0),
+                t.PadNpArray(
+                    t.BandPassNpArray(
+                        hparams["config"]["bandpass_low"],
+                        hparams["config"]["bandpass_high"],
+                        hparams["config"]["sample_rate"],
+                    ),
+                    padlen=hparams["config"]["sample_rate"],
+                ),
                 t.ToTensor(),
                 t.VotesToProbabilities(),
             ]
@@ -221,3 +242,4 @@ def config(hparams):
             ),
         ],
     )
+

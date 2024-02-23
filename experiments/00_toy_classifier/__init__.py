@@ -1,10 +1,8 @@
 import os
-from pathlib import Path
 from functools import partial
 
 import pytorch_lightning as pl
 import pandas as pd
-import torchaudio_filters as taf
 from torch import nn, optim
 from torch.utils.data import DataLoader
 from torchmetrics import MeanSquaredError
@@ -53,7 +51,7 @@ class PlaceholderModel(nn.Module):
 
 
 def config(hparams):
-    num_channels = 20
+    num_channels = 19
     num_classes = 6
 
     module = MainModule(
