@@ -8,7 +8,6 @@ import torchaudio_filters as taf
 from torch import nn, optim
 from torch.utils.data import DataLoader
 from torchmetrics import KLDivergence
-from torchmetrics.classification import MulticlassAccuracy
 from torchvision.transforms.v2 import Compose
 
 from hms_brain_activity.metadata_classes import ModelConfig
@@ -77,7 +76,6 @@ def config(hparams) -> ModelConfig:
         loss_function=nn.MSELoss(),
         metrics_preprocessor=lambda y_pred, y: (y_pred.squeeze(-1), y.squeeze(-1)),
         metrics={
-            "accuracy": MulticlassAccuracy(num_classes=num_classes),
             "kl_divergence": KLDivergence(),
         },
         optimizer_factory=partial(
