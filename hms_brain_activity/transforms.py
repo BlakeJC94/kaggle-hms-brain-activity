@@ -227,7 +227,7 @@ class _BaseMontage(_BaseTransform, abc.ABC):
     def __init__(self):
         super().__init__()
         n_channels = len(CHANNEL_NAMES)
-        montage_mat = torch.zeros((n_channels, n_channels))
+        montage_mat = torch.zeros((n_channels, len(self.montage)))
         for j, (ch_1, ch_2) in enumerate(self.montage):
             ch_idx_1 = CHANNEL_NAMES.index(ch_1) if ch_1 in CHANNEL_NAMES else None
             if ch_idx_1 is not None:
