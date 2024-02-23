@@ -172,13 +172,14 @@ class NotchNpArray(_BaseFilterNpArray):
 
 
 class ToTensor(_BaseTransform):
-    def __init__(self, nan_to_num=0):
+    def __init__(self, dtype_x=torch.float32, dtype_y=torch.float32):
         super().__init__()
-        self.nan_to_num = nan_to_num
+        self.dtype_x = dtype_x
+        self.dtype_y = dtype_y
 
     def compute(self, x, md):
-        x = torch.tensor(x)
-        md["y"] = torch.tensor(md["y"])
+        x = torch.tensor(x.copy(), dtype=self.dtype_x)
+        md["y"] = torch.tensor(md["y"].copy(), dtype=self.dtype_y)
         return x, md
 
 
