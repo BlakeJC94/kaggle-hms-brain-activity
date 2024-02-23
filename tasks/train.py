@@ -10,7 +10,6 @@ from pytorch_lightning.loggers import TensorBoardLogger
 
 from hms_brain_activity import logger
 from hms_brain_activity.callbacks import EpochProgress
-from hms_brain_activity.metadata_classes import ModelConfig
 from hms_brain_activity.paths import get_task_artifacts_dir
 from hms_brain_activity.utils import import_script_as_module, print_dict
 
@@ -45,7 +44,11 @@ def train(
     weights_dir = save_dir / "model_weights"
 
     # Initialise callbacks
-    callbacks = [EpochProgress(), pl.callbacks.LearningRateMonitor(), *config.callbacks]
+    callbacks = [
+        EpochProgress(),
+        pl.callbacks.LearningRateMonitor(),
+        *config.get("callbacks", []),
+    ]
     if not dev_run:
         callbacks = [
             pl.callbacks.ModelCheckpoint(
@@ -93,7 +96,7 @@ def train(
                 f"Loading weights '{checkpoint_name}' from {checkpoint_task_id}"
             )
             ckpt = torch.load(weights_path, map_location="cpu")
-            config.model.load_state_dict(ckpt["state_dict"])
+            config["model"].load_state_dict(ckpt["state_dict"])
         else:
             logger.info(
                 f"Loading checkpoint '{checkpoint_name}' from {checkpoint_task_id}"
@@ -109,18 +112,18 @@ def train(
     # Trainer.fit
     trainer = pl.Trainer(**trainer_init_kwargs)
     try:
-        trainer.validate(config.model, dataloaders=config.val_dataloader)
+        trainer.validate(config["model"], dataloaders=config["val_dataloaders"])
         trainer.fit(
-            config.model,
-            train_dataloaders=config.train_dataloader,
-            val_dataloaders=config.val_dataloader,
+            config["model"],
+            train_dataloaders=config["train_dataloaders"],
+            val_dataloaders=config["val_dataloaders"],
             **trainer_fit_kwargs,
         )
     except Exception as err:
         if pdb:
-            model = config.model
-            train_ds = config.train_dataloader.dataset
-            val_ds = config.val_dataloader.dataset
+            model = config["model"]
+            train_dls = config["train_dataloaders"]
+            val_ds = config["val_dataloaders"]
             breakpoint()
         raise err
 
@@ -131,7 +134,7 @@ def setup_task(
     hparams_path: Path,
     dev_run: bool,
     pdb: bool,
-) -> Tuple[Dict[str, Any], Task, ModelConfig]:
+) -> Tuple[Dict[str, Any], Task, Dict[str, Any]]:
     # Import hparams
     hparams = import_script_as_module(hparams_path).hparams
 

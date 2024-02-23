@@ -11,7 +11,6 @@ from torch.utils.data import DataLoader
 from torchmetrics import KLDivergence
 from torchvision.transforms.v2 import Compose
 
-from hms_brain_activity.metadata_classes import ModelConfig
 from hms_brain_activity.module import MainModule
 from hms_brain_activity.datasets import HmsLocalClassificationDataset
 from hms_brain_activity import transforms as t
@@ -122,7 +121,7 @@ class ClassificationHead1d(nn.Sequential):
         self.avg_pool = nn.AdaptiveAvgPool1d(1)
         self.fc = nn.Linear(num_channels, num_classes)
 
-def config(hparams) -> ModelConfig:
+def config(hparams):
     num_channels = 20
     num_classes = 6
 
@@ -198,17 +197,15 @@ def config(hparams) -> ModelConfig:
         ),
     )
 
-    return ModelConfig(
-        project=hparams["task"]["init"]["project_name"],
-        experiment_name="-".join(Path(__file__).parts[-2:]),
+    return dict(
         model=module,
-        train_dataloader=DataLoader(
+        train_dataloaders=DataLoader(
             train_dataset,
             batch_size=hparams["config"]["batch_size"],
             num_workers=hparams["config"].get("num_workers", os.cpu_count()) or 0,
             shuffle=True,
         ),
-        val_dataloader=DataLoader(
+        val_dataloaders=DataLoader(
             val_dataset,
             batch_size=hparams["config"]["batch_size"],
             num_workers=hparams["config"].get("num_workers", os.cpu_count()) or 0,
