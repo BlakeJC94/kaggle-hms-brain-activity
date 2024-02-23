@@ -11,7 +11,7 @@ from hms_brain_activity.utils import saggital_flip_channel
 class ToTensor(nn.Module):
     def __init__(self, nan_to_num=0):
         super().__init__()
-        self.nan_to_num
+        self.nan_to_num = nan_to_num
 
     def forward(self, x, md):
         x = torch.nan_to_num(torch.tensor(x), self.nan_to_num)
