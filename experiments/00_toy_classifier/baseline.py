@@ -21,6 +21,7 @@ hparams = {
         "bandpass_high": 45.0,
         "learning_rate": 3 * 1e-2,
         "weight_decay": 0.01,
+        "num_workers": 8,
         "batch_size": 256,
         "patience": 20,
         "milestones": [20],
