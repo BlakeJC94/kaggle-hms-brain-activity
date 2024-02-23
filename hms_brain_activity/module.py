@@ -3,6 +3,7 @@ from typing import Callable, Optional, TypeAlias, Dict, List, Any
 
 import pytorch_lightning as pl
 import torch
+from matplotlib import pyplot as plt
 from clearml import Logger
 from torch import nn
 from torch.optim import Optimizer, lr_scheduler
@@ -150,7 +151,7 @@ class MainModule(pl.LightningModule):
                     iteration=self.current_epoch,
                     figure=fig,
                 )
-                fig.close()
+                plt.close(fig)
             else:
                 clearml_logger.report_plotly(
                     f"{name} ({stage})",
