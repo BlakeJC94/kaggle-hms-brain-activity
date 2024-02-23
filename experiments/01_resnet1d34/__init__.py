@@ -120,6 +120,16 @@ class ResNet1d34Backbone(nn.Sequential):
             conv5_3=BasicBlock1d(in_channels5, self.channels[3], stride=1),
         )
         self.conv5 = nn.Sequential(conv5)
+        self.init_weights()
+
+    def init_weights(self):
+        self.apply(self._init_weight_bias)
+
+    def _init_weight_bias(self, module):
+        if isinstance(module, (nn.Conv1d, nn.Linear)):
+            nn.init.kaiming_normal_(module.weight)
+            if module.bias is not None:
+                nn.init.constant_(module.bias, 0.01)
 
 
 class ClassificationHead1d(nn.Sequential):
@@ -129,7 +139,7 @@ class ClassificationHead1d(nn.Sequential):
         self.num_classes = num_classes
 
         self.avg_pool = nn.AdaptiveAvgPool1d(1)
-        self.fc = nn.Linear(num_channels, num_classes)
+        self.fc = nn.Conv1d(num_channels, num_classes, 1)
 
 
 def config(hparams):
@@ -243,4 +253,3 @@ def config(hparams):
             ),
         ],
     )
-
