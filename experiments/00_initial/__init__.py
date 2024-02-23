@@ -6,6 +6,7 @@ import pytorch_lightning as pl
 import pandas as pd
 from torch import nn, optim
 from torch.utils.data import DataLoader
+from torchmetrics import KLDivergence
 from torchmetrics.classification import MulticlassAccuracy
 from torchvision.transforms.v2 import Compose
 
@@ -53,6 +54,7 @@ def config(hparams) -> ModelConfig:
         loss_function=nn.MSELoss(),
         metrics={
             "accuracy": MulticlassAccuracy(num_classes=num_classes),
+            "kl_divergence": KLDivergence(),
         },
         optimizer_factory=partial(
             optim.AdamW,
