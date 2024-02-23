@@ -100,3 +100,17 @@ class RandomSaggitalFlip(_BaseMontage):
         if random.random() < 0.5:
             x, md = super().forward(x, md)
         return x, md
+
+
+class RandomScale(nn.Module):
+    def __init__(self, min_scale=0.75, max_scale=1.25, per_channel=True):
+        super().__init__()
+        self.min_scale = min_scale
+        self.max_scale = max_scale
+        self.per_channel = per_channel
+
+    def forward(self, x, md):
+        size = x.shape[:-1] if self.per_channel else x.shape[:-2]
+        scale = self.min_scale + (self.max_scale - self.min_scale) * torch.rand(size)
+        x = x * scale.unsqueeze(-1)
+        return x, md
