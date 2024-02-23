@@ -58,14 +58,6 @@ def config(hparams):
 
     module = MainModule(
         nn.Sequential(
-            taf.Pad(
-                taf.BandPass(
-                    hparams["config"]["bandpass_low"],
-                    hparams["config"]["bandpass_high"],
-                    hparams["config"]["sample_rate"],
-                ),
-                padlen=hparams["config"]["sample_rate"],
-            ),
             t.DoubleBananaMontage(),
             t.ScaleEEG(1 / (35 * 1.5)),
             t.ScaleECG(1 / 1e4),
@@ -108,6 +100,14 @@ def config(hparams):
         annotations=train_annotations,
         transform=Compose(
             [
+                t.PadNpArray(
+                    t.BandPassNpArray(
+                        hparams["config"]["bandpass_low"],
+                        hparams["config"]["bandpass_high"],
+                        hparams["config"]["sample_rate"],
+                    ),
+                    padlen=hparams["config"]["sample_rate"],
+                ),
                 t.ToTensor(),
                 t.RandomSaggitalFlip(),
                 t.RandomScale(),
@@ -121,6 +121,14 @@ def config(hparams):
         annotations=val_annotations,
         transform=Compose(
             [
+                t.PadNpArray(
+                    t.BandPassNpArray(
+                        hparams["config"]["bandpass_low"],
+                        hparams["config"]["bandpass_high"],
+                        hparams["config"]["sample_rate"],
+                    ),
+                    padlen=hparams["config"]["sample_rate"],
+                ),
                 t.ToTensor(),
                 t.VotesToProbabilities(),
             ]
