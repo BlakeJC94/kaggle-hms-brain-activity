@@ -21,6 +21,7 @@ EDA:
 * [x] Table of durations per study
 * [ ] Plot some example "other" regions
 * [ ] Figure out how to train/val split by patient_id and maintain label balance
+    * `from sklearn.model_selection import StratifiedShuffleSplit`?
 
 Training:
 * Foundation with a classification approach
@@ -34,10 +35,9 @@ Training:
     * [x] Upgrade placeholder model
     * [x] Implement random sagittal flip
     * [x] Implement a montage function
-    * [ ] Implement filters
-    * [ ] Implement a basic Resnet for timeseries
+    * [x] Implement filters
+    * [x] Implement a basic Resnet for timeseries
     * [ ] Train a basic resnet for classification to a "pretty good" degree
-    * [ ] Explore vote melting strategies
     * [ ] Write evaluation script and prediction writer for submission
 * Classification vs Segmentation (more samples good?)
     * [ ] Expand dataset to segmentation output (will need to rework iteration)
@@ -58,6 +58,9 @@ Training:
     * [ ] Pretrain a model using best approach so far for 2d data
     * [ ] Pretrain a model using best approach so far for ensemble frozen
     * [ ] Pretrain a model using best approach so far for ensemble unfrozen
+
+* Ideas:
+    * Try audio-style segmentation with waveunet?
 
 
 ## Usage
