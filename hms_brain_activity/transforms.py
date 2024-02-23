@@ -34,18 +34,22 @@ class TanhClipTensor(nn.Module):
 
     def forward(self, x, md=None):
         x = torch.tanh(x / self.abs_bound) * self.abs_bound
+        if md is None:
+            return x
         return x, md
 
 
 class _BaseScaleChannels(nn.Module):
     def __init__(self, scalar: float):
         super().__init__()
-        self.scalar = torch.Tensor(scalar)
+        self.scalar = scalar
 
     def forward(self, x, md=None):
         x_slice = [slice(None)] * x.ndim
         x_slice[-2] = self.ch_slice
         x[x_slice] = x[x_slice] / self.scalar
+        if md is None:
+            return x
         return x, md
 
 
