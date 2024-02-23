@@ -145,6 +145,7 @@ def config(hparams) -> ModelConfig:
             ClassificationHead1d(ResNet1d18Backbone.channels[-1], num_classes),
         ),
         loss_function=nn.MSELoss(),
+        metrics_preprocessor=lambda y_pred, y: (y_pred.squeeze(-1), y.squeeze(-1)),
         metrics={
             "accuracy": MulticlassAccuracy(num_classes=num_classes),
             "kl_divergence": KLDivergence(),

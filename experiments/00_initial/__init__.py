@@ -75,6 +75,7 @@ def config(hparams) -> ModelConfig:
             PlaceholderModel(num_channels=num_channels, num_classes=num_classes),
         ),
         loss_function=nn.MSELoss(),
+        metrics_preprocessor=lambda y_pred, y: (y_pred.squeeze(-1), y.squeeze(-1)),
         metrics={
             "accuracy": MulticlassAccuracy(num_classes=num_classes),
             "kl_divergence": KLDivergence(),
