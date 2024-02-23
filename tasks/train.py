@@ -35,6 +35,11 @@ def train(
     """Choo choo"""
     pl.seed_everything(0, workers=True)
 
+    if dev_run:
+        logger.info("DEV RUN")
+    if pdb:
+        logger.info("PDB")
+
     hparams, task, config = setup_task(hparams_path, dev_run, pdb)
     save_dir = get_task_artifacts_dir(task) / "train"
     weights_dir = save_dir / "model_weights"
@@ -129,19 +134,19 @@ def setup_task(
 ) -> Tuple[Dict[str, Any], Task, ModelConfig]:
     # Import hparams
     hparams = import_script_as_module(hparams_path).hparams
-    logger.info("hparams =")
-    logger.info(print_dict(hparams))
 
     # Set task name and check if it's not already running
     task_name = "-".join(Path(hparams_path).parts[-2:]).removesuffix(".py")
     project_name = hparams["task"]["init"]["project_name"]
 
-    # Set debug overrides
     if dev_run:
-        logger.info("DEV RUN")
         hparams = set_hparams_debug_overrides(hparams)
         task_name = f"DEV RUN: {task_name}"
         project_name = "test"
+
+    # Print hparams
+    logger.info("hparams =")
+    logger.info(print_dict(hparams))
 
     # Halt if task is currently running for project_name/task_name
     existing_task = Task.get_task(project_name=project_name, task_name=task_name)
