@@ -32,10 +32,12 @@ Training:
     * [x] Define and test a basic config
     * [x] Scale data
     * [x] Upgrade placeholder model
-    * [ ] Implement random sagittal flip
+    * [x] Implement random sagittal flip
     * [x] Implement a montage function
+    * [ ] Implement filters
     * [ ] Implement a basic Resnet for timeseries
     * [ ] Train a basic resnet for classification to a "pretty good" degree
+    * [ ] Explore vote melting strategies
     * [ ] Write evaluation script and prediction writer for submission
 * Classification vs Segmentation (more samples good?)
     * [ ] Expand dataset to segmentation output (will need to rework iteration)
