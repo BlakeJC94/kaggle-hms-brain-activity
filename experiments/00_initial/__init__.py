@@ -4,6 +4,7 @@ from functools import partial
 
 import pytorch_lightning as pl
 import pandas as pd
+import torchaudio_filters import as taf
 from torch import nn, optim
 from torch.utils.data import DataLoader
 from torchmetrics import KLDivergence
@@ -89,6 +90,14 @@ def config(hparams) -> ModelConfig:
             [
                 t.ToTensor(),
                 t.FillNans(),
+                taf.Pad(
+                    taf.BandPass(
+                        hparams["config"]["bandpass_low"],
+                        hparams["config"]["bandpass_high"],
+                        hparams["config"]["sample_rate"],
+                    ),
+                    padlen=hparams["config"]["sample_rate"],
+                ),
                 t.ScaleEEG(1 / (35 * 1.5)),
                 t.ScaleECG(1 / 1e4),
                 t.RandomSaggitalFlip(),
@@ -106,6 +115,14 @@ def config(hparams) -> ModelConfig:
             [
                 t.ToTensor(),
                 t.FillNans(),
+                taf.Pad(
+                    taf.BandPass(
+                        hparams["config"]["bandpass_low"],
+                        hparams["config"]["bandpass_high"],
+                        hparams["config"]["sample_rate"],
+                    ),
+                    padlen=hparams["config"]["sample_rate"],
+                ),
                 t.ScaleEEG(1 / (35 * 1.5)),
                 t.ScaleECG(1 / 1e4),
                 t.TanhClipTensor(4),
