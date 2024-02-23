@@ -20,6 +20,8 @@ hparams = {
         "weight_decay": 0.01,
         "batch_size": 8,
         "patience": 20,
+        "milestones": [20],
+        "gamma": 0.2,
         "monitor": "loss/validate",
     },
 }

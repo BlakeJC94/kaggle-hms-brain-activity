@@ -64,8 +64,8 @@ def config(hparams) -> ModelConfig:
         scheduler_factory=lambda opt: {
             "scheduler": optim.lr_scheduler.MultiStepLR(
                 opt,
-                milestones=[20, 40, 60],
-                gamma=0.2,
+                milestones=hparams["config"]["milestones"],
+                gamma=hparams["config"]["gamma"],
             ),
             "monitor": hparams["config"]["monitor"],
         },
