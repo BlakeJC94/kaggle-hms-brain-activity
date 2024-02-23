@@ -1,9 +1,11 @@
+import random
 from typing import List, Tuple
 
 import torch
 from torch import nn
 
 from hms_brain_activity.globals import CHANNEL_NAMES
+from hms_brain_activity.utils import saggital_flip_channel
 
 
 class ToTensor(nn.Module):
@@ -89,3 +91,12 @@ class DoubleBananaMontage(_BaseMontage):
         ("Cz", "Pz"),
         ("EKG", ""),
     ]
+
+
+class RandomSaggitalFlip(_BaseMontage):
+    montage = [saggital_flip_channel(ch) for ch in CHANNEL_NAMES]
+
+    def forward(self, x, md):
+        if random.random() < 0.5:
+            x, md = super().forward(x, md)
+        return x, md

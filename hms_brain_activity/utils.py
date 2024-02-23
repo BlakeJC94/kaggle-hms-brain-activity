@@ -14,3 +14,12 @@ def import_script_as_module(config_path) -> Any:
 
 def print_dict(d: dict) -> str:
     return json.dumps(d, indent=2, default=lambda o: str(o))
+
+
+def saggital_flip_channel(ch: str) -> str:
+    if ch == "EKG" or ch[-1] == "z":
+        return ch
+    pos = "".join([c for c in ch if not c.isnumeric()])
+    digit = int("".join([c for c in ch if c.isnumeric()]))
+    translation = -1 if digit % 2 == 0 else 1
+    return "".join([pos, str(digit + translation)])

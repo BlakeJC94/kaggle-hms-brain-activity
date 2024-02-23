@@ -33,7 +33,7 @@ Training:
     * [x] Scale data
     * [x] Upgrade placeholder model
     * [ ] Implement random sagittal flip
-    * [ ] Implement a montage function
+    * [x] Implement a montage function
     * [ ] Implement a basic Resnet for timeseries
     * [ ] Train a basic resnet for classification to a "pretty good" degree
     * [ ] Write evaluation script and prediction writer for submission
