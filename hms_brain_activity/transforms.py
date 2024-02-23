@@ -1,12 +1,15 @@
 import abc
 import random
-from typing import List, Tuple
+from typing import List, Tuple, Literal
 
 import torch
+import numpy as np
 from torch import nn
+from scipy import signal
 
 from hms_brain_activity.globals import CHANNEL_NAMES
 from hms_brain_activity.utils import saggital_flip_channel
+
 
 class _BaseTransform(nn.Module, abc.ABC):
     @abc.abstractmethod
@@ -20,6 +23,143 @@ class _BaseTransform(nn.Module, abc.ABC):
         return x, md
 
 
+class PadNpArray(_BaseTransform):
+    def __init__(
+        self,
+        module: nn.Module,
+        padlen: int,
+        mode: Literal["odd", "even", "const"] = "odd",
+        val: float = 0.0,
+    ):
+        super().__init__()
+        self.module = module
+        self.padlen = int(padlen)
+        self.mode = mode
+        self.val = val
+
+    @staticmethod
+    def odd_ext(x, n):
+        left_end = x[..., :1]
+        left_ext = np.flip(x[..., 1 : n + 1], axis=-1)
+
+        right_end = x[..., -1:]
+        right_ext = np.flip(x[..., -(n + 1) : -1], axis=-1)
+
+        return np.concatenate(
+            (
+                2 * left_end - left_ext,
+                x,
+                2 * right_end - right_ext,
+            ),
+            axis=-1,
+        )
+
+    @staticmethod
+    def even_ext(x, n):
+        left_ext = np.flip(x[..., 1 : n + 1], axis=-1)
+        right_ext = np.flip(x[..., -(n + 1) : -1], axis=-1)
+        return np.concatenate(
+            (
+                left_ext,
+                x,
+                right_ext,
+            ),
+            axis=-1,
+        )
+
+    @staticmethod
+    def _pad_const(x, n, val=0):
+        ext = val * np.ones_like(x)[..., :n]
+        return np.concatenate(
+            (
+                ext,
+                x,
+                ext,
+            ),
+            axis=-1,
+        )
+
+    def compute(self, x, md):
+        if self.mode == "odd":
+            x = self.odd_ext(x, self.padlen)
+        elif self.mode == "even":
+            x = self.even_ext(x, self.padlen)
+        else:
+            x = self.const_ext(x, self.padlen, self.val)
+        x, md = self.module(x, md)
+        return x[..., self.padlen : -self.padlen], md
+
+
+class _BaseFilterNpArray(_BaseTransform, abc.ABC):
+    btype: Literal["lowpass", "highpass", "band", "bandstop"]
+
+    def __init__(
+        self,
+        order: int,
+        cutoff: int | List[int],
+        sample_rate: float,
+    ):
+        super().__init__()
+        self.sos = self.get_filter_coeffs(
+            order,
+            cutoff,
+            sample_rate,
+        )
+
+    def get_filter_coeffs(
+        self,
+        order: int,
+        cutoffs: int | List[int],
+        sample_rate: float,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        return signal.butter(
+            order, cutoffs, btype=self.btype, output="sos", fs=sample_rate
+        )
+
+    def compute(self, x, md):
+        x = signal.sosfiltfilt(self.sos, x, axis=-1)
+        return x, md
+
+
+class LowPassNpArray(_BaseFilterNpArray):
+    btype = "lowpass"
+
+    def __init__(self, cutoff: float, sample_rate: float, order: int = 2):
+        super().__init__(order, cutoff, sample_rate)
+
+
+class HighPassNpArray(_BaseFilterNpArray):
+    btype = "highpass"
+
+    def __init__(self, cutoff: float, sample_rate: float, order: int = 2):
+        super().__init__(order, cutoff, sample_rate)
+
+
+class BandPassNpArray(_BaseFilterNpArray):
+    btype = "band"
+
+    def __init__(
+        self,
+        cutoff_low: float,
+        cutoff_high: float,
+        sample_rate: float,
+        order: int = 2,
+    ):
+        super().__init__(order, (cutoff_low, cutoff_high), sample_rate)
+
+
+class NotchNpArray(_BaseFilterNpArray):
+    btype = "bandstop"
+
+    def __init__(
+        self,
+        cutoff_low: float,
+        cutoff_high: float,
+        sample_rate: float,
+        order: int = 2,
+    ):
+        super().__init__(order, (cutoff_low, cutoff_high), sample_rate)
+
 
 class ToTensor(_BaseTransform):
     def __init__(self, nan_to_num=0):
@@ -27,8 +167,8 @@ class ToTensor(_BaseTransform):
         self.nan_to_num = nan_to_num
 
     def compute(self, x, md):
-        x = torch.nan_to_num(torch.tensor(x), self.nan_to_num)
-        md["y"] = torch.nan_to_num(torch.tensor(md["y"]), self.nan_to_num)
+        x = torch.tensor(x)
+        md["y"] = torch.tensor(md["y"])
         return x, md
 
 
