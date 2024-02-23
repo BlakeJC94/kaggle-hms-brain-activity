@@ -88,9 +88,13 @@ def config(hparams) -> ModelConfig:
         transform=Compose(
             [
                 t.ToTensor(),
-                t.VotesToProbabilities(),
+                t.FillNans(),
                 t.ScaleEEG(1 / (35 * 1.5)),
+                t.ScaleECG(1 / 1e4),
+                t.RandomSaggitalFlip(),
+                t.RandomScale(),
                 t.TanhClipTensor(4),
+                t.VotesToProbabilities(),
             ]
         ),
     )
@@ -101,6 +105,10 @@ def config(hparams) -> ModelConfig:
         transform=Compose(
             [
                 t.ToTensor(),
+                t.FillNans(),
+                t.ScaleEEG(1 / (35 * 1.5)),
+                t.ScaleECG(1 / 1e4),
+                t.TanhClipTensor(4),
                 t.VotesToProbabilities(),
             ]
         ),
