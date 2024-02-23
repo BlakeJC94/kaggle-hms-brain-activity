@@ -2607,6 +2607,21 @@ files = [
 torch = "2.2.0"
 
 [[package]]
+name = "torchaudio-filters"
+version = "0.2.1"
+description = "High-pass and low-pass filters implemented as modules with torchaudio"
+optional = false
+python-versions = ">=3.10,<4.0"
+files = [
+    {file = "torchaudio_filters-0.2.1-py3-none-any.whl", hash = "sha256:fd9fc4b7f1d3dd080e815f2fd97c69884d4a937e58ca9d5e01bd9b1277e7116f"},
+    {file = "torchaudio_filters-0.2.1.tar.gz", hash = "sha256:17092a594bf966f0ce0608b248e0faf440debb0b9793c3bde3a77a009b8d4907"},
+]
+
+[package.dependencies]
+scipy = ">=1.12.0,<2.0.0"
+torchaudio = ">=2.0.0,<3.0.0"
+
+[[package]]
 name = "torchmetrics"
 version = "1.3.1"
 description = "PyTorch native Metrics"
@@ -2908,4 +2923,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "04afd4a0b30dbf28e714393a52efaec8495661229d48c4f95cf0bc8006904938"
+content-hash = "021729d965988db5c4e047867dc3ec7b38b8fa5eee9f181511914ae85e7d2ee9"
