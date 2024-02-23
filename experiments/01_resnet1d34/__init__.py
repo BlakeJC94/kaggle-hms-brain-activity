@@ -144,6 +144,7 @@ def config(hparams):
             t.TanhClipTensor(4),
             ResNet1d34Backbone(num_channels),
             ClassificationHead1d(ResNet1d34Backbone.channels[-1], num_classes),
+            nn.LogSoftmax(dim=1),
         ),
         loss_function=nn.KLDivLoss(reduction="batchmean"),
         metrics_preprocessor=lambda y_pred, y: (y_pred.squeeze(-1), y.squeeze(-1)),

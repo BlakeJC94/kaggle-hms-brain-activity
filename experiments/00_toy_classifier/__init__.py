@@ -61,7 +61,7 @@ def config(hparams):
             t.ScaleECG(1 / 1e4),
             t.TanhClipTensor(4),
             PlaceholderModel(num_channels=num_channels, num_classes=num_classes),
-            nn.Softmax(dim=1),
+            nn.LogSoftmax(dim=1),
         ),
         loss_function=nn.KLDivLoss(reduction="batchmean"),
         metrics_preprocessor=lambda y_pred, y: (y_pred.squeeze(-1), y.squeeze(-1)),
