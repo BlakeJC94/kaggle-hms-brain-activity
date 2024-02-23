@@ -33,6 +33,7 @@ def train(
 ) -> str:
     """Choo choo"""
     pl.seed_everything(0, workers=True)
+    torch.set_float32_matmul_precision('high')
 
     if dev_run:
         logger.info("DEV RUN")
