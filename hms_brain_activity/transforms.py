@@ -22,6 +22,16 @@ class _BaseTransform(nn.Module, abc.ABC):
             return x
         return x, md
 
+class FillNanNpArray(_BaseTransform):
+    def __init__(self, val):
+        super().__init__()
+        self.val = val
+
+    def compute(self, x, md):
+        x = np.nan_to_num(x, self.val)
+        md["y"] = np.nan_to_num(md["y"].copy(), self.val)
+        return x, md
+
 
 class PadNpArray(_BaseTransform):
     def __init__(
