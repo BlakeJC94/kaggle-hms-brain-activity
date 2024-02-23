@@ -7,7 +7,7 @@ import pandas as pd
 import torchaudio_filters as taf
 from torch import nn, optim
 from torch.utils.data import DataLoader
-from torchmetrics import KLDivergence
+from torchmetrics import MeanSquaredError
 from torchvision.transforms.v2 import Compose
 
 from hms_brain_activity.module import MainModule
@@ -47,9 +47,9 @@ class PlaceholderModel(nn.Module):
     def forward(self, x):
         x = self.relu(self.bn1(self.conv1(x)))
         x = self.relu(self.bn2(self.conv2(x)))
-        x = self.conv3(x)
         x = self.avg(x)
-        return nn.functional.softmax(x, dim=1)
+        x = self.conv3(x)
+        return x
 
 
 def config(hparams):
@@ -63,11 +63,12 @@ def config(hparams):
             t.ScaleECG(1 / 1e4),
             t.TanhClipTensor(4),
             PlaceholderModel(num_channels=num_channels, num_classes=num_classes),
+            nn.Softmax(dim=1),
         ),
-        loss_function=nn.MSELoss(),
+        loss_function=nn.KLDivLoss(reduction="batchmean"),
         metrics_preprocessor=lambda y_pred, y: (y_pred.squeeze(-1), y.squeeze(-1)),
         metrics={
-            "kl_divergence": KLDivergence(),
+            "mse": MeanSquaredError(),
         },
         optimizer_factory=partial(
             optim.AdamW,
