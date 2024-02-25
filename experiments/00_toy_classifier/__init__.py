@@ -11,6 +11,7 @@ from torchvision.transforms.v2 import Compose
 from hms_brain_activity.module import MainModule
 from hms_brain_activity.datasets import HmsLocalClassificationDataset
 from hms_brain_activity import transforms as t
+from hms_brain_activity.utils import split_annotations_across_patients
 
 
 class PlaceholderModel(nn.Module):
@@ -85,12 +86,11 @@ def config(hparams):
 
     annotations = pd.read_csv("./data/hms/train.csv")
 
-    # TODO Find a better subsampling strategy
-    val_patient_ids = set(
-        annotations["patient_id"].drop_duplicates().sample(frac=0.2, random_state=0)
+    train_annotations, val_annotaions = split_annotations_across_patients(
+        annotations,
+        test_size=0.2,
+        random_state=0,
     )
-    val_annotations = annotations[annotations["patient_id"].isin(val_patient_ids)]
-    train_annotations = annotations[~annotations["patient_id"].isin(val_patient_ids)]
 
     data_dir = "./data/hms/train_eegs"
 

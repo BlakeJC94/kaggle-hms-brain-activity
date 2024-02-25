@@ -37,6 +37,7 @@ def saggital_flip_channel(ch: str) -> str:
 
 def split_annotations_across_patient_by_class(
     ann: pd.DataFrame,
+    test_size=0.2,
     random_state=0,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     res = ann[["patient_id", *VOTE_NAMES]]
@@ -48,7 +49,7 @@ def split_annotations_across_patient_by_class(
 
     res_train, res_val = train_test_split(
         res,
-        test_size=0.2,
+        test_size=test_size,
         stratify=res[["class_1", "class_2"]],
         shuffle=True,
         random_state=random_state,
