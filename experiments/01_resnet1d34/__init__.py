@@ -158,7 +158,6 @@ def config(hparams):
             nn.LogSoftmax(dim=1),
         ),
         loss_function=nn.KLDivLoss(reduction="batchmean"),
-        metrics_preprocessor=lambda y_pred, y: (y_pred.squeeze(-1), y.squeeze(-1)),
         metrics={
             "mse": MeanSquaredError(),
         },
