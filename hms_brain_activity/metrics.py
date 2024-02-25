@@ -4,6 +4,20 @@ import torch
 from torchmetrics import Metric
 
 
+class MetricWrapper(Metric):
+    def __init__(self, preprocessor: Callable, metric: Metric):
+        super().__init__()
+        self.preprocessor = preprocessor
+        self.metric = metric
+
+    def update(self, y_pred, y):
+        y_pred, y = self.preprocessor(y_pred, y)
+        self.metric.update(y_pred, y)
+
+    def compute(self):
+        return self.metric.compute()
+
+
 class PooledMean(Metric):
     """Base class for converting a standard callable into a pooled mean metric.
     This class will store results from calls so that the overall mean can be calculated in

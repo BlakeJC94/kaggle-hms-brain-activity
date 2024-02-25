@@ -26,7 +26,6 @@ class MainModule(pl.LightningModule):
         optimizer_factory: Callable,
         scheduler_factory: Optional[Callable] = None,
         metrics: Optional[Dict[str, Metric]] = None,
-        metrics_preprocessor: Optional[Callable] = None,
         hyperparams_ignore: Optional[List[str]] = None,
     ):
         """
@@ -40,8 +39,6 @@ class MainModule(pl.LightningModule):
                 expect a single argument, the registered optimizer.
             metrics: A dict of {metric_name: function}. Functions should accept 2 args:
                 predictions and labels, and return a scalar number.
-            metrics_preprocessor: Optional callable to apply to preds (e.g. if preds are logits)
-                before calculating metrics (by default no operation is applied).
             hyperparams_ignore: A list of attribute strings to add to the `ignore` list in
                 `save_hyperparameters`.
         """
@@ -62,7 +59,6 @@ class MainModule(pl.LightningModule):
                 for k in ["train", "sanity_check", "validate", "test", "predict"]
             }
         )
-        self.metrics_preprocessor = metrics_preprocessor
 
         hyperparams_ignore = hyperparams_ignore or []
         self.save_hyperparameters(
@@ -72,7 +68,6 @@ class MainModule(pl.LightningModule):
                 "scheduler_factory",
                 "metrics",
                 "model",
-                "metrics_preprocessor",
                 *hyperparams_ignore,
             ],
         )
@@ -113,8 +108,6 @@ class MainModule(pl.LightningModule):
         """Calculate and log metrics for a batch of predictions against target labels."""
         y = md["y"]
         stage = self.get_stage()
-        if self.metrics_preprocessor is not None:
-            y_pred, y = self.metrics_preprocessor(y_pred, y)
 
         metrics = getattr(self.metrics, f"{stage}_metrics", {})
         for metric_name, metric in metrics.items():
