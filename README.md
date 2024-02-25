@@ -16,11 +16,11 @@ https://www.kaggle.com/competitions/hms-harmful-brain-activity-classification/ov
 ## TODO
 
 EDA:
-* [ ] Explore distribution of labels in the training dataset
+* [x] Explore distribution of labels in the training dataset
 * [x] How many channels are in the files?
 * [x] Table of durations per study
 * [ ] Plot some example "other" regions
-* [ ] Figure out how to train/val split by patient_id and maintain label balance
+* [x] Figure out how to train/val split by patient_id and maintain label balance
     * `from sklearn.model_selection import StratifiedShuffleSplit`?
 
 Training:
@@ -38,7 +38,14 @@ Training:
     * [x] Implement filters
     * [x] Implement a basic Resnet for timeseries
     * [ ] Train a basic resnet for classification to a "pretty good" degree
+    * [ ] Try downsampling the signal
+    * [ ] Implement output transforms
     * [ ] Write evaluation script and prediction writer for submission
+    * [ ] Track mean value for each class
+    * [ ] Track mean error for each class
+    * [ ] Write an asymmetric violin plot metric for classes (pred dist vs true dist)
+    * [ ] Write an asymmetric violin plot metric for classes
+    * [ ] Submit first attempt
 * Classification vs Segmentation (more samples good?)
     * [ ] Expand dataset to segmentation output (will need to rework iteration)
     * [ ] Train same resnet backbone
@@ -53,6 +60,7 @@ Training:
     * [ ] Use pretrained weights and unfreeze train an ensemble and compare
 * TUH pretraining
     * [ ] Match up labels in TUH with HMS task
+        * 3 corpuses, overlaps between files and a lot of label combination probably needed
     * [ ] Implement TUH dataset
     * [ ] Pretrain a model using best approach so far for 1d data
     * [ ] Pretrain a model using best approach so far for 2d data
