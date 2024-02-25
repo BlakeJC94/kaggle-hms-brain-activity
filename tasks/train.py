@@ -43,6 +43,8 @@ def train(
     hparams, task, config = setup_task(hparams_path, dev_run, pdb)
     save_dir = get_task_artifacts_dir(task) / "train"
     weights_dir = save_dir / "model_weights"
+    for fp in weights_dir.glob("*.ckpt"):
+        fp.unlink()
 
     # Initialise callbacks
     callbacks = [
