@@ -24,9 +24,13 @@ ann = ann[
 
 
 # %% How imbalanced are these votes?
-res = ann[VOTE_NAMES].sum()
-res = res.apply(lambda x: x / res.sum().sum())
+def show_vote_balance(ann: pd.DataFrame):
+    res = ann[VOTE_NAMES].sum()
+    res = res.apply(lambda x: x / res.sum().sum())
+    return res
 
+
+res = show_vote_balance(ann)
 print(res.round(2))
 # seizure_vote    0.12
 # lpd_vote        0.16
@@ -41,13 +45,12 @@ plt.show()
 
 
 # %% How imbalanced are these probs?
-res = (
-    ann[VOTE_NAMES]
-    .apply(lambda x: x / ann[VOTE_NAMES].sum(axis=1))
-    .sum()
-)
-res = res.apply(lambda x: x / res.sum().sum())
+def show_prob_balance(ann:pd.DataFrame):
+    res = ann[VOTE_NAMES].apply(lambda x: x / ann[VOTE_NAMES].sum(axis=1)).sum()
+    res = res.apply(lambda x: x / res.sum().sum())
+    return res
 
+res = show_prob_balance(ann)
 print(res.round(2))
 # seizure_vote    0.21
 # lpd_vote        0.13
@@ -61,11 +64,16 @@ plt.show()
 # Seems to have a nicer balance in this view!
 
 # %% How about the majority vote dist?
-res = ann[VOTE_NAMES].apply(lambda x: np.argmax(x), axis=1)
-res = pd.get_dummies(res).rename(columns=dict(enumerate(VOTE_NAMES)))
-res = res.astype(int).sum()
-res = res.apply(lambda x: x / res.sum().sum())
+def show_majority_vote_balance(ann):
+    res = ann[VOTE_NAMES].apply(lambda x: np.argmax(x), axis=1)
+    res = pd.get_dummies(res).rename(columns=dict(enumerate(VOTE_NAMES)))
+    res = res.astype(int).sum()
+    res = res.apply(lambda x: x / res.sum().sum())
+    return res
 
+
+
+res = show_majority_vote_balance(ann)
 print(res.round(2))
 # seizure_vote    0.20
 # lpd_vote        0.14
@@ -101,26 +109,60 @@ len(ann[VOTE_NAMES][ann[VOTE_NAMES].sum(axis=1) == 0])
 
 # %% Combine votes across patients
 
-res = ann[['patient_id', *VOTE_NAMES]]
-res = res.groupby('patient_id').sum()
-res["class_1"] = res.idxmax(axis=1)
-# res["class_2"] = (r).idxmax(axis=1)  # TODO
+from sklearn.model_selection import train_test_split
+
+res = ann[["patient_id", *VOTE_NAMES]]
+res = res.groupby("patient_id").sum()
+res["class_1"] = res[VOTE_NAMES].idxmax(axis=1)
+res["class_2"] = (
+    res[VOTE_NAMES].subtract(res[VOTE_NAMES].max(axis=1), axis=0).idxmax(axis=1)
+)
+
+res_train, res_val = train_test_split(
+    res,
+    test_size=0.2,
+    stratify=res[["class_1", "class_2"]],
+    shuffle=True,
+    random_state=0,
+)
+
+ann_train = ann[ann["patient_id"].isin(res_train.index)]
+ann_val = ann[ann["patient_id"].isin(res_val.index)]
+
+# %%
+res_train = show_vote_balance(ann_train)
+res_val = show_vote_balance(ann_val)
+
+res = pd.DataFrame(dict(train=res_train, val=res_val))
+print(res.round(2))
+
+res.plot.bar()
+plt.show()
+
+# fig, axs = plt.subplots(1, 2)
+# fig.axes.append(res_train.plot.bar(ax=axs[0], rot=0))
+# fig.axes.append(res_val.plot.bar(ax=axs[1], rot=0))
+# plt.show()
+
 
 
 # %%
+res_train = show_prob_balance(ann_train)
+res_val = show_prob_balance(ann_val)
 
-random_state = 0
-candidate_splits = {
-    k: v
-    for k, v in zip(
-        ["train", "val"],
-        list(
-            StratifiedShuffleSplit(
-                n_splits=1, test_size=0.2, random_state=random_state
-            ).split(
-                np.zeros(len(studies_to_stratify)),
-                studies_to_stratify[demographics_to_stratify].values,
-            )
-        )[0],
-    )
-}
+res = pd.DataFrame(dict(train=res_train, val=res_val))
+print(res.round(2))
+
+res.plot.bar()
+plt.show()
+
+# %%
+res_train = show_majority_vote_balance(ann_train)
+res_val = show_majority_vote_balance(ann_val)
+
+res = pd.DataFrame(dict(train=res_train, val=res_val))
+print(res.round(2))
+
+res.plot.bar()
+plt.show()
+
