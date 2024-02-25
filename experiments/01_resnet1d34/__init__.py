@@ -179,7 +179,7 @@ def config(hparams):
 
     annotations = pd.read_csv("./data/hms/train.csv")
 
-    train_annotations, val_annotaions = split_annotations_across_patients(
+    train_annotations, val_annotations = split_annotations_across_patients(
         annotations,
         test_size=0.2,
         random_state=0,
