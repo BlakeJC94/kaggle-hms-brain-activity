@@ -35,7 +35,7 @@ def saggital_flip_channel(ch: str) -> str:
     return "".join([pos, str(digit + translation)])
 
 
-def split_annotations_across_patient_by_class(
+def split_annotations_across_patient(
     ann: pd.DataFrame,
     test_size=0.2,
     random_state=0,
