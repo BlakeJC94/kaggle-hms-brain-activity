@@ -163,9 +163,8 @@ def config(hparams):
             "mse": MeanSquaredError(),
         },
         optimizer_factory=partial(
-            optim.AdamW,
+            optim.Adam,
             lr=hparams["config"]["learning_rate"],
-            weight_decay=hparams["config"]["weight_decay"],
         ),
         scheduler_factory=lambda opt: {
             "scheduler": optim.lr_scheduler.MultiStepLR(
