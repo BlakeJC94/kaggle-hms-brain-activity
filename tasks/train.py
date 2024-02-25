@@ -55,6 +55,7 @@ def train(
             pl.callbacks.ModelCheckpoint(
                 weights_dir,
                 monitor=hparams["config"]["monitor"],
+                last=True,
             ),
             *callbacks,
         ]
