@@ -143,20 +143,38 @@ class ClassificationHead1d(nn.Sequential):
         self.fc = nn.Conv1d(num_channels, num_classes, 1)
 
 
-def config(hparams):
+def model_config(hparams):
     num_channels = 19
     num_classes = 6
+    return nn.Sequential(
+        ResNet1d34Backbone(num_channels),
+        ClassificationHead1d(ResNet1d34Backbone.channels[-1], num_classes),
+        nn.LogSoftmax(dim=1),
+    )
 
-    module = MainModule(
-        nn.Sequential(
-            t.DoubleBananaMontage(),
-            t.ScaleEEG(1 / (35 * 1.5)),
-            t.ScaleECG(1 / 1e4),
-            t.TanhClipTensor(4),
-            ResNet1d34Backbone(num_channels),
-            ClassificationHead1d(ResNet1d34Backbone.channels[-1], num_classes),
-            nn.LogSoftmax(dim=1),
+
+def transforms(hparams):
+    return [
+        t.FillNanNpArray(0),
+        t.PadNpArray(
+            t.BandPassNpArray(
+                hparams["config"]["bandpass_low"],
+                hparams["config"]["bandpass_high"],
+                hparams["config"]["sample_rate"],
+            ),
+            padlen=hparams["config"]["sample_rate"],
         ),
+        t.ToTensor(),
+        t.DoubleBananaMontage(),
+        t.ScaleEEG(1 / (35 * 1.5)),
+        t.ScaleECG(1 / 1e4),
+        t.TanhClipTensor(4),
+    ]
+
+
+def config(hparams):
+    module = MainModule(
+        model(hparams),
         loss_function=nn.KLDivLoss(reduction="batchmean"),
         metrics={
             "mse": MeanSquaredError(),
@@ -190,16 +208,7 @@ def config(hparams):
         annotations=train_annotations,
         transform=Compose(
             [
-                t.FillNanNpArray(0),
-                t.PadNpArray(
-                    t.BandPassNpArray(
-                        hparams["config"]["bandpass_low"],
-                        hparams["config"]["bandpass_high"],
-                        hparams["config"]["sample_rate"],
-                    ),
-                    padlen=hparams["config"]["sample_rate"],
-                ),
-                t.ToTensor(),
+                *transforms(hparams),
                 t.RandomSaggitalFlip(),
                 t.RandomScale(),
                 t.VotesToProbabilities(),
@@ -212,19 +221,9 @@ def config(hparams):
         annotations=val_annotations,
         transform=Compose(
             [
-                t.FillNanNpArray(0),
-                t.PadNpArray(
-                    t.BandPassNpArray(
-                        hparams["config"]["bandpass_low"],
-                        hparams["config"]["bandpass_high"],
-                        hparams["config"]["sample_rate"],
-                    ),
-                    padlen=hparams["config"]["sample_rate"],
-                ),
-                t.ToTensor(),
+                *transforms(hparams),
                 t.VotesToProbabilities(),
             ]
-        ),
     )
 
     return dict(
