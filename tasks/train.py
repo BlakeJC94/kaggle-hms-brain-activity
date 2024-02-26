@@ -204,7 +204,7 @@ def setup_task(
     task.connect_configuration(config_path, "config")
     task.connect(hparams, "hparams")
 
-    config_fn = import_script_as_module(config_path).config
+    config_fn = import_script_as_module(config_path).train_config
     logger.info("Setting hparams on config")
     try:
         config = config_fn(hparams)

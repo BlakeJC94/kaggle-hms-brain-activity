@@ -51,7 +51,7 @@ class PlaceholderModel(nn.Module):
         return x
 
 
-def config(hparams):
+def train_config(hparams):
     num_channels = 19
     num_classes = 6
 
