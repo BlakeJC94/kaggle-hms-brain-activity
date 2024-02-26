@@ -13,7 +13,7 @@ def main():
         )
         for fp in Path("/proc").glob("*/cmdline")
         if "train.py" in fp.read_text()
-        and int((fp / "status").read_text().split("\n")[8].split("\t")[1])
+        and int((fp.parent / "status").read_text().split("\n")[8].split("\t")[1])
         == os.getuid()
     ]
 
@@ -22,7 +22,7 @@ def main():
         return
 
     foo = sorted(foo, key=lambda x: x[1])
-    pid = foo[0][0]
+    pid = int(foo[0][0])
 
     logger.info(f"Sending interrupt to {pid}")
     os.kill(pid, signal.SIGINT)
