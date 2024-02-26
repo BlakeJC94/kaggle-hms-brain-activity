@@ -194,3 +194,24 @@ class TrainModule(pl.LightningModule):
 
     def on_test_epoch_end(self):
         self.metrics_compute_and_log()
+
+
+class InferenceModule(pl.LightningModule):
+    def __init__(
+        self,
+        model: nn.Module,
+        output_transform: Optional[Callable] = None,
+    ):
+        super().__init__()
+        self.model = model
+        self.output_transform = output_transform
+
+    def forward(self, *args, **kwargs):
+        return self.model(*args, **kwargs)
+
+    def predict_step(self, batch, batch_idx, _dataloader_idx=0):
+        x, md = batch
+        y_pred = self(x)
+        if self.output_transform:
+            out, md = self.output_transform(y_pred, md)
+        return {"md": md, "y_pred": y_pred, "out": out}
