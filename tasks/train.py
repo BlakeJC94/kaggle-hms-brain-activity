@@ -23,6 +23,7 @@ def parse() -> argparse.Namespace:
     parser.add_argument("hparams_path")
     parser.add_argument("-d", "--dev-run", action="store_true", default=False)
     parser.add_argument("-D", "--pdb", action="store_true", default=False)
+    parser.add_argument("-o", "--offline", action="store_true", default=False)
     return parser.parse_args()
 
 
@@ -30,6 +31,7 @@ def train(
     hparams_path: str,
     dev_run: bool = False,
     pdb: bool = False,
+    offline: bool=False,
 ) -> str:
     """Choo choo"""
     pl.seed_everything(0, workers=True)
@@ -39,8 +41,10 @@ def train(
         logger.info("DEV RUN")
     if pdb:
         logger.info("PDB")
+    if offline:
+        logger.info("PDB")
 
-    hparams, task, config = setup_task(hparams_path, dev_run, pdb)
+    hparams, task, config = setup_task(hparams_path, dev_run, pdb, offline)
     save_dir = get_task_artifacts_dir(task) / "train"
     weights_dir = save_dir / "model_weights"
     for fp in weights_dir.glob("*.ckpt"):
@@ -133,10 +137,19 @@ def train(
     return task.id
 
 
+from dataclasses import dataclass
+@dataclass
+class OfflineTask:
+    name: str
+    @property
+    def id(self):
+        return "offline"
+
 def setup_task(
     hparams_path: Path,
     dev_run: bool,
     pdb: bool,
+    offline: bool,
 ) -> Tuple[Dict[str, Any], Task, Dict[str, Any]]:
     # Import hparams
     hparams = import_script_as_module(hparams_path).hparams
@@ -149,61 +162,16 @@ def setup_task(
         hparams = set_hparams_debug_overrides(hparams)
         task_name = f"DEV RUN: {task_name}"
         project_name = "test"
+    config_path = hparams["config"].get(
+        "path",
+        str(Path(hparams_path).parent / "__init__.py"),
+    )
 
     # Print hparams
     logger.info("hparams =")
     logger.info(print_dict(hparams))
 
-    # Halt if task is currently running for project_name/task_name
-    existing_task = Task.get_task(project_name=project_name, task_name=task_name)
-    if existing_task is not None and existing_task.status == "in_progress":
-        raise FileExistsError(f"Task '{project_name}/{task_name}' is in progress.")
-
-    # Unpack checkpoint kwargs
-    ckpt_params = hparams["checkpoint"]
-    checkpoint_task_id = ckpt_params.get("checkpoint_task_id")
-    checkpoint_name = ckpt_params.get("checkpoint_name", "last")
-    weights_only = bool(ckpt_params.get("weights_only", False))
-    continue_last_task = bool(
-        checkpoint_task_id and (checkpoint_name == "last") and not weights_only
-    )
-    logger.info(f"{continue_last_task = }")
-
-    # Set debug overrides
-    if dev_run and continue_last_task:
-        logger.info("(Continuing last task is disabled for debug runs)")
-        continue_last_task = False
-
-    # Start ClearML
-    # Task.add_requirements("./requirements.txt")
-    # Task.add_requirements("./requirements-dev.txt")
-    task_init_kwargs = hparams.get("task", {}).get("init", {})
-    task_init_kwargs = {
-        **task_init_kwargs,
-        "task_name": task_name,
-        "project_name": project_name,
-        "continue_last_task": continue_last_task,
-        "auto_connect_frameworks": {
-            "matplotlib": True,
-            "pytorch": False,
-            "tensorboard": True,
-        },
-    }
-    task = Task.init(**task_init_kwargs)
-    if checkpoint_task_id:
-        task.set_parent(checkpoint_task_id)
-    elif parent_task_id := hparams.get("task", {}).get("parent_task_id"):
-        task.set_parent(parent_task_id)
-
-    # Connect configurations
-    config_path = hparams["config"].get(
-        "path",
-        str(Path(hparams_path).parent / "__init__.py"),
-    )
     logger.info(f"Using config at '{config_path}'")
-    task.connect_configuration(config_path, "config")
-    task.connect(hparams, "hparams")
-
     config_fn = import_script_as_module(config_path).train_config
     logger.info("Setting hparams on config")
     try:
@@ -213,6 +181,54 @@ def setup_task(
             logger.error("Couldn't import config")
             breakpoint()
         raise err
+
+    task = OfflineTask(task_name)
+    if not offline:
+        # Halt if task is currently running for project_name/task_name
+        existing_task = Task.get_task(project_name=project_name, task_name=task_name)
+        if existing_task is not None and existing_task.status == "in_progress":
+            raise FileExistsError(f"Task '{project_name}/{task_name}' is in progress.")
+
+        # Unpack checkpoint kwargs
+        ckpt_params = hparams["checkpoint"]
+        checkpoint_task_id = ckpt_params.get("checkpoint_task_id")
+        checkpoint_name = ckpt_params.get("checkpoint_name", "last")
+        weights_only = bool(ckpt_params.get("weights_only", False))
+        continue_last_task = bool(
+            checkpoint_task_id and (checkpoint_name == "last") and not weights_only
+        )
+        logger.info(f"{continue_last_task = }")
+
+        # Set debug overrides
+        if dev_run and continue_last_task:
+            logger.info("(Continuing last task is disabled for debug runs)")
+            continue_last_task = False
+
+        # Start ClearML
+        # Task.add_requirements("./requirements.txt")
+        # Task.add_requirements("./requirements-dev.txt")
+        task_init_kwargs = hparams.get("task", {}).get("init", {})
+        task_init_kwargs = {
+            **task_init_kwargs,
+            "task_name": task_name,
+            "project_name": project_name,
+            "continue_last_task": continue_last_task,
+            "auto_connect_frameworks": {
+                "matplotlib": True,
+                "pytorch": False,
+                "tensorboard": True,
+            },
+        }
+        task = Task.init(**task_init_kwargs)
+        if checkpoint_task_id:
+            task.set_parent(checkpoint_task_id)
+        elif parent_task_id := hparams.get("task", {}).get("parent_task_id"):
+            task.set_parent(parent_task_id)
+
+        # Connect configurations
+        task.connect_configuration(config_path, "config")
+        task.connect(hparams, "hparams")
+
 
     return hparams, task, config
 
