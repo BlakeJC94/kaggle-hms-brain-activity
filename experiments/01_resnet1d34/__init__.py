@@ -1,15 +1,17 @@
 import os
 from collections import OrderedDict
 from functools import partial
+from pathlib import Path
 
 import pytorch_lightning as pl
+import torch
 import pandas as pd
 from torch import nn, optim
 from torch.utils.data import DataLoader
 from torchmetrics import MeanSquaredError
 from torchvision.transforms.v2 import Compose
 
-from hms_brain_activity.module import MainModule
+from hms_brain_activity.module import TrainModule
 from hms_brain_activity.datasets import HmsClassificationDataset
 from hms_brain_activity import transforms as t
 from hms_brain_activity.utils import split_annotations_across_patients
@@ -172,8 +174,8 @@ def transforms(hparams):
     ]
 
 
-    module = MainModule(
 def train_config(hparams):
+    module = TrainModule(
         model(hparams),
         loss_function=nn.KLDivLoss(reduction="batchmean"),
         metrics={
