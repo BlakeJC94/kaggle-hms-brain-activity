@@ -8,8 +8,8 @@ from torch.utils.data import DataLoader
 from torchmetrics import MeanSquaredError
 from torchvision.transforms.v2 import Compose
 
-from hms_brain_activity.module import MainModule
-from hms_brain_activity.datasets import HmsLocalClassificationDataset
+from hms_brain_activity.module import TrainModule
+from hms_brain_activity.datasets import HmsClassificationDataset
 from hms_brain_activity import transforms as t
 from hms_brain_activity.utils import split_annotations_across_patients
 
@@ -51,11 +51,11 @@ class PlaceholderModel(nn.Module):
         return x
 
 
-def config(hparams):
+def train_config(hparams):
     num_channels = 19
     num_classes = 6
 
-    module = MainModule(
+    module = TrainModule(
         nn.Sequential(
             t.DoubleBananaMontage(),
             t.ScaleEEG(1 / (35 * 1.5)),
@@ -94,7 +94,7 @@ def config(hparams):
 
     data_dir = "./data/hms/train_eegs"
 
-    train_dataset = HmsLocalClassificationDataset(
+    train_dataset = HmsClassificationDataset(
         data_dir=data_dir,
         annotations=train_annotations,
         transform=Compose(
@@ -116,7 +116,7 @@ def config(hparams):
         ),
     )
 
-    val_dataset = HmsLocalClassificationDataset(
+    val_dataset = HmsClassificationDataset(
         data_dir=data_dir,
         annotations=val_annotations,
         transform=Compose(

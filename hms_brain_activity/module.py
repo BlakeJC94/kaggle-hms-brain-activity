@@ -18,7 +18,7 @@ matplotlib.use("Agg")
 LRScheduler: TypeAlias = lr_scheduler._LRScheduler
 
 
-class MainModule(pl.LightningModule):
+class TrainModule(pl.LightningModule):
     def __init__(
         self,
         model: nn.Module,
@@ -26,7 +26,6 @@ class MainModule(pl.LightningModule):
         optimizer_factory: Callable,
         scheduler_factory: Optional[Callable] = None,
         metrics: Optional[Dict[str, Metric]] = None,
-        hyperparams_ignore: Optional[List[str]] = None,
     ):
         """
 
@@ -60,7 +59,6 @@ class MainModule(pl.LightningModule):
             }
         )
 
-        hyperparams_ignore = hyperparams_ignore or []
         self.save_hyperparameters(
             ignore=[
                 "loss_function",
@@ -68,7 +66,6 @@ class MainModule(pl.LightningModule):
                 "scheduler_factory",
                 "metrics",
                 "model",
-                *hyperparams_ignore,
             ],
         )
 
@@ -166,10 +163,10 @@ class MainModule(pl.LightningModule):
     ## Train methods
     def training_step(self, batch, batch_idx, _dataloader_idx=0):
         x, md = batch
-        y_pred = self.forward(x)
+        y_pred = self(x)
         loss = self.loss_calculate_and_log(y_pred, md)
         self.metrics_update_and_log(y_pred, md)
-        return {"loss": loss, "metadata": md}
+        return {"loss": loss, "md": md, "y_pred": y_pred}
 
     def on_train_epoch_end(self):
         self.metrics_compute_and_log()
@@ -177,10 +174,11 @@ class MainModule(pl.LightningModule):
     ## Val methods
     def validation_step(self, batch, batch_idx, _dataloader_idx=0):
         x, md = batch
-        y_pred = self.forward(x)
+        y_pred = self(x)
         loss = self.loss_calculate_and_log(y_pred, md)
         self.metrics_update_and_log(y_pred, md)
-        return {"loss": loss, "metadata": md}
+        out, md = self.output_transform(y_pred, md)
+        return {"loss": loss, "md": md, "y_pred": y_pred, "out": out}
 
     def on_validation_epoch_end(self):
         self.metrics_compute_and_log()
@@ -188,10 +186,32 @@ class MainModule(pl.LightningModule):
     ## Test methods
     def test_step(self, batch, batch_idx, _dataloader_idx=0):
         x, md = batch
-        y_pred = self.forward(x)
+        y_pred = self(x)
         loss = self.loss_calculate_and_log(y_pred, md)
         self.metrics_update_and_log(y_pred, md)
-        return {"loss": loss, "metadata": md}
+        out, md = self.output_transform(y_pred, md)
+        return {"loss": loss, "md": md, "y_pred": y_pred, "out": out}
 
     def on_test_epoch_end(self):
         self.metrics_compute_and_log()
+
+
+class InferenceModule(pl.LightningModule):
+    def __init__(
+        self,
+        model: nn.Module,
+        output_transform: Optional[Callable] = None,
+    ):
+        super().__init__()
+        self.model = model
+        self.output_transform = output_transform
+
+    def forward(self, *args, **kwargs):
+        return self.model(*args, **kwargs)
+
+    def predict_step(self, batch, batch_idx, _dataloader_idx=0):
+        x, md = batch
+        y_pred = self(x)
+        if self.output_transform:
+            out, md = self.output_transform(y_pred, md)
+        return {"md": md, "y_pred": y_pred, "out": out}
