@@ -26,6 +26,7 @@ class TrainModule(pl.LightningModule):
         optimizer_factory: Callable,
         scheduler_factory: Optional[Callable] = None,
         metrics: Optional[Dict[str, Metric]] = None,
+        transform: Optional[Callable] = None,
     ):
         """
 
@@ -58,6 +59,7 @@ class TrainModule(pl.LightningModule):
                 for k in ["train", "sanity_check", "validate", "test", "predict"]
             }
         )
+        self.transform = transform or (lambda y_pred, md: (y_pred, md))
 
         self.save_hyperparameters(
             ignore=[
@@ -177,7 +179,7 @@ class TrainModule(pl.LightningModule):
         y_pred = self(x)
         loss = self.loss_calculate_and_log(y_pred, md)
         self.metrics_update_and_log(y_pred, md)
-        out, md = self.output_transform(y_pred, md)
+        out, md = self.transform(y_pred.clone(), md)
         return {"loss": loss, "md": md, "y_pred": y_pred, "out": out}
 
     def on_validation_epoch_end(self):
@@ -189,22 +191,22 @@ class TrainModule(pl.LightningModule):
         y_pred = self(x)
         loss = self.loss_calculate_and_log(y_pred, md)
         self.metrics_update_and_log(y_pred, md)
-        out, md = self.output_transform(y_pred, md)
+        out, md = self.transform(y_pred.clone(), md)
         return {"loss": loss, "md": md, "y_pred": y_pred, "out": out}
 
     def on_test_epoch_end(self):
         self.metrics_compute_and_log()
 
 
-class InferenceModule(pl.LightningModule):
+class PredictModule(pl.LightningModule):
     def __init__(
         self,
         model: nn.Module,
-        output_transform: Optional[Callable] = None,
+        transform: Optional[Callable] = None,
     ):
         super().__init__()
         self.model = model
-        self.output_transform = output_transform
+        self.transform = transform or (lambda y_pred, md: (y_pred, md))
 
     def forward(self, *args, **kwargs):
         return self.model(*args, **kwargs)
@@ -212,6 +214,5 @@ class InferenceModule(pl.LightningModule):
     def predict_step(self, batch, batch_idx, _dataloader_idx=0):
         x, md = batch
         y_pred = self(x)
-        if self.output_transform:
-            out, md = self.output_transform(y_pred, md)
+        out, md = self.transform(y_pred.clone(), md)
         return {"md": md, "y_pred": y_pred, "out": out}
