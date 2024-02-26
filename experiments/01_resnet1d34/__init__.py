@@ -10,7 +10,7 @@ from torchmetrics import MeanSquaredError
 from torchvision.transforms.v2 import Compose
 
 from hms_brain_activity.module import MainModule
-from hms_brain_activity.datasets import HmsLocalClassificationDataset
+from hms_brain_activity.datasets import HmsClassificationDataset
 from hms_brain_activity import transforms as t
 from hms_brain_activity.utils import split_annotations_across_patients
 
@@ -185,7 +185,7 @@ def config(hparams):
 
     data_dir = "./data/hms/train_eegs"
 
-    train_dataset = HmsLocalClassificationDataset(
+    train_dataset = HmsClassificationDataset(
         data_dir=data_dir,
         annotations=train_annotations,
         transform=Compose(
@@ -207,7 +207,7 @@ def config(hparams):
         ),
     )
 
-    val_dataset = HmsLocalClassificationDataset(
+    val_dataset = HmsClassificationDataset(
         data_dir=data_dir,
         annotations=val_annotations,
         transform=Compose(
