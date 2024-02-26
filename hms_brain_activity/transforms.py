@@ -22,6 +22,7 @@ class _BaseTransform(nn.Module, abc.ABC):
             return x
         return x, md
 
+
 class FillNanNpArray(_BaseTransform):
     def __init__(self, val):
         super().__init__()
@@ -29,7 +30,8 @@ class FillNanNpArray(_BaseTransform):
 
     def compute(self, x, md):
         x = np.nan_to_num(x, self.val)
-        md["y"] = np.nan_to_num(md["y"].copy(), self.val)
+        if "y" in md:
+            md["y"] = np.nan_to_num(md["y"].copy(), self.val)
         return x, md
 
 
@@ -179,7 +181,8 @@ class ToTensor(_BaseTransform):
 
     def compute(self, x, md):
         x = torch.tensor(x.copy(), dtype=self.dtype_x)
-        md["y"] = torch.tensor(md["y"].copy(), dtype=self.dtype_y)
+        if "y" in md:
+            md["y"] = torch.tensor(md["y"].copy(), dtype=self.dtype_y)
         return x, md
 
 
@@ -191,13 +194,13 @@ class VotesToProbabilities(_BaseTransform):
         return x, md
 
 
-class TanhClipTensor(_BaseTransform):
+class TanhClipNpArray(_BaseTransform):
     def __init__(self, abs_bound: float):
         super().__init__()
         self.abs_bound = abs_bound
 
     def compute(self, x, md):
-        x = torch.tanh(x / self.abs_bound) * self.abs_bound
+        x = np.tanh(x / self.abs_bound) * self.abs_bound
         return x, md
 
 
@@ -207,8 +210,7 @@ class _BaseScaleChannels(_BaseTransform, abc.ABC):
         self.scalar = scalar
 
     def compute(self, x, md):
-        x_slice = [slice(None)] * x.ndim
-        x_slice[-2] = self.ch_slice
+        x_slice = tuple(self.ch_slice if i == x.ndim - 2 else slice(None) for i in range(x.ndim))
         x[x_slice] = x[x_slice] / self.scalar
         return x, md
 
@@ -221,13 +223,13 @@ class ScaleECG(_BaseScaleChannels):
     ch_slice = slice(-1, None)
 
 
-class _BaseMontage(_BaseTransform, abc.ABC):
+class _BaseMontageNpArray(_BaseTransform, abc.ABC):
     montage: List[Tuple[str, str]]
 
     def __init__(self):
         super().__init__()
         n_channels = len(CHANNEL_NAMES)
-        montage_mat = torch.zeros((n_channels, len(self.montage)))
+        montage_mat = np.zeros((n_channels, len(self.montage)))
         for j, (ch_1, ch_2) in enumerate(self.montage):
             ch_idx_1 = CHANNEL_NAMES.index(ch_1) if ch_1 in CHANNEL_NAMES else None
             if ch_idx_1 is not None:
@@ -237,17 +239,18 @@ class _BaseMontage(_BaseTransform, abc.ABC):
             if ch_idx_2 is not None:
                 montage_mat[ch_idx_2, j] = -1
 
-        self.register_buffer("montage_mat", montage_mat)
+        self.montage_mat = montage_mat
 
     def compute(self, x, md):
-        x = torch.matmul(
-            x.transpose(-2, -1),
+        x = np.matmul(
+            np.swapaxes(x, -2, -1),
             self.montage_mat,
-        ).transpose(-2, -1)
+        )
+        x = np.swapaxes(x, -2, -1)
         return x, md
 
 
-class DoubleBananaMontage(_BaseMontage):
+class DoubleBananaMontageNpArray(_BaseMontageNpArray):
     montage = [
         ("Fp1", "F7"),
         ("F7", "T3"),
@@ -271,7 +274,7 @@ class DoubleBananaMontage(_BaseMontage):
     ]
 
 
-class RandomSaggitalFlip(_BaseMontage):
+class RandomSaggitalFlipNpArray(_BaseMontageNpArray):
     montage = [(saggital_flip_channel(ch), "") for ch in CHANNEL_NAMES]
 
     def compute(self, x, md):
@@ -290,5 +293,5 @@ class RandomScale(_BaseTransform):
     def compute(self, x, md):
         size = x.shape[:-1] if self.per_channel else x.shape[:-2]
         scale = self.min_scale + (self.max_scale - self.min_scale) * torch.rand(size)
-        x = x * scale.unsqueeze(-1)
+        x = x * np.expand_dims(scale, -1)
         return x, md
