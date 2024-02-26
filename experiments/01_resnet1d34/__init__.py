@@ -252,3 +252,29 @@ def train_config(hparams):
             ),
         ],
     )
+
+
+def predict_config(hparams):
+    model = model_config(hparams)
+
+    weights_path = Path(hparams["predict"]["weights_path"])
+    ckpt = torch.load(weights_path, map_location="cpu")
+    model.load_state_dict(ckpt["state_dict"]["model"])
+
+    module = PredictModule(model)
+
+    data_dir="./data/hms/test_eegs"
+    predict_dataset = HmsPredictDataset(
+        data_dir=data_dir,
+        transform=Compose(transforms(hparams)),
+    )
+
+    return dict(
+        model=module,
+        predict_dataloaders=DataLoader(
+            predict_dataset,
+            batch_size=hparams["config"]["batch_size"],
+            num_workers=hparams["config"].get("num_workers", os.cpu_count()) or 0,
+            shuffle=False,
+        ),
+    )
