@@ -11,8 +11,8 @@ from torch.utils.data import DataLoader
 from torchmetrics import MeanSquaredError
 from torchvision.transforms.v2 import Compose
 
-from hms_brain_activity.module import TrainModule
-from hms_brain_activity.datasets import HmsClassificationDataset
+from hms_brain_activity.module import TrainModule, PredictModule
+from hms_brain_activity.datasets import HmsClassificationDataset, HmsPredictDataset
 from hms_brain_activity import transforms as t
 from hms_brain_activity.utils import split_annotations_across_patients
 
@@ -166,18 +166,18 @@ def transforms(hparams):
             ),
             padlen=hparams["config"]["sample_rate"],
         ),
-        t.ToTensor(),
-        t.DoubleBananaMontage(),
         t.ScaleEEG(1 / (35 * 1.5)),
         t.ScaleECG(1 / 1e4),
-        t.TanhClipTensor(4),
+        t.TanhClipNpArray(4),
+        t.DoubleBananaMontageNpArray(),
+        t.ToTensor(),
     ]
 
 
 def train_config(hparams):
     module = TrainModule(
-        model(hparams),
-        loss_function=nn.KLDivLoss(reduction="batchmean"),
+        model_config(hparams),
+        loss_function=nn.KLDivLoss(reduction="batchmean", log_target=True),
         metrics={
             "mse": MeanSquaredError(),
         },
@@ -210,9 +210,9 @@ def train_config(hparams):
         annotations=train_annotations,
         transform=Compose(
             [
-                *transforms(hparams),
-                t.RandomSaggitalFlip(),
+                t.RandomSaggitalFlipNpArray(),
                 t.RandomScale(),
+                *transforms(hparams),
                 t.VotesToProbabilities(),
             ]
         ),
@@ -225,7 +225,8 @@ def train_config(hparams):
             [
                 *transforms(hparams),
                 t.VotesToProbabilities(),
-            ]
+            ],
+        ),
     )
 
     return dict(
@@ -255,17 +256,18 @@ def train_config(hparams):
 
 
 def predict_config(hparams):
-    model = model_config(hparams)
+    module = PredictModule(
+        model_config(hparams),
+        output_transform=lambda y_pred, md: (torch.exp(y_pred), md),
+    )
 
     weights_path = Path(hparams["predict"]["weights_path"])
     ckpt = torch.load(weights_path, map_location="cpu")
-    model.load_state_dict(ckpt["state_dict"]["model"])
+    module.load_state_dict(ckpt["state_dict"], strict=False)
 
-    module = PredictModule(model)
-
-    data_dir="./data/hms/test_eegs"
-    predict_dataset = HmsPredictDataset(
-        data_dir=data_dir,
+    predict_dataset = HmsClassificationDataset(
+        data_dir=hparams["predict"]["data_dir"],
+        annotations=pd.read_csv(hparams["predict"]["annotations"]),
         transform=Compose(transforms(hparams)),
     )
 
