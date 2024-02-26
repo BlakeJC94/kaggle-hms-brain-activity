@@ -31,6 +31,9 @@ class SubmissionWriter(pl.callbacks.BasePredictionWriter):
     def __init__(self, output_dir: Path):
         super().__init__(write_interval="batch")
         self.output_dir = Path(output_dir)
+        assert self.output_dir.is_dir()
+        if not self.output_dir.exists():
+            self.output_dir.mkdir(parents=True, exist_ok=True)
 
         self.output_path = self.output_dir / self.filename
         if self.output_path.exists():
@@ -47,14 +50,11 @@ class SubmissionWriter(pl.callbacks.BasePredictionWriter):
         _dataloader_idx=0,
     ):
         out, md = prediction["out"], prediction["md"]
-        out = out.cpu().unsqueeze(-1).numpy()
-        eeg_ids = md['eeg_id'].cpu().numpy()
+        out = out.cpu().squeeze(-1).numpy()
+        eeg_ids = md['eeg_id']
 
         rows = pd.DataFrame(
-            {
-                "eeg_id": eeg_ids,
-                **{col: out[:,i] for i, col in enumerate(VOTE_NAMES)}
-            }
+            { "eeg_id": eeg_ids, **{col: out[:,i] for i, col in enumerate(VOTE_NAMES)} }
         )
         rows = rows[["eeg_id", *VOTE_NAMES]]
 
