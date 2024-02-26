@@ -69,11 +69,13 @@ class HmsClassificationDataset(_BaseHmsDataset):
         eeg_path = self.data_dir / f"{eeg_id}.parquet"
         data, metadata = self.get_data(eeg_path, start, duration)
 
-        label = annotation[self.vote_names].astype(int).to_numpy()
+        label = np.zeros(len(self.vote_names))
+        if all(col in annotation for col in self.vote_names):
+            label = annotation[self.vote_names].to_numpy()
 
         metadata = {
             **metadata,
-            "y": np.expand_dims(label, -1),
+            "y": np.expand_dims(label.astype(int), -1),
             "patient_id": annotation.get("patient_id"),
         }
 
@@ -81,3 +83,9 @@ class HmsClassificationDataset(_BaseHmsDataset):
             data, metadata = self.transform(data, metadata)
 
         return data, metadata
+
+
+# class HmsStrideDataset(_BaseHmsDataset):
+#     def __init__(self, hop_secs: Optional[float] = _BaseHmsDataset.sample_secs)
+#         ...
+#     ...

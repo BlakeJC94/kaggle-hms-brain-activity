@@ -12,7 +12,7 @@ from torchmetrics import MeanSquaredError
 from torchvision.transforms.v2 import Compose
 
 from hms_brain_activity.module import TrainModule, PredictModule
-from hms_brain_activity.datasets import HmsClassificationDataset, HmsPredictDataset
+from hms_brain_activity.datasets import HmsClassificationDataset
 from hms_brain_activity import transforms as t
 from hms_brain_activity.utils import split_annotations_across_patients
 
