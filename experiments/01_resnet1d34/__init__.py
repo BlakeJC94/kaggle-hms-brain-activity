@@ -258,7 +258,7 @@ def train_config(hparams):
 def predict_config(hparams):
     module = PredictModule(
         model_config(hparams),
-        output_transform=lambda y_pred, md: (torch.exp(y_pred), md),
+        transform=lambda y_pred, md: (torch.exp(y_pred), md),
     )
 
     weights_path = Path(hparams["predict"]["weights_path"])
