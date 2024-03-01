@@ -5,12 +5,16 @@ import pytorch_lightning as pl
 import torch
 import matplotlib
 from matplotlib import pyplot as plt
-from clearml import Logger
 from torch import nn
 from torch.optim import Optimizer, lr_scheduler
 from torchmetrics import Metric, MeanMetric
 
 from hms_brain_activity.metrics import PooledMean
+
+try:
+    from clearml import Logger
+except ImportError:
+    Logger = None
 
 
 matplotlib.use("Agg")
@@ -139,6 +143,7 @@ class TrainModule(pl.LightningModule):
         if (
             epoch
             and hasattr(metric, "plot")
+            and (Logger is not None)
             and (clearml_logger := Logger.current_logger()) is not None
         ):
             plot = metric.plot()
