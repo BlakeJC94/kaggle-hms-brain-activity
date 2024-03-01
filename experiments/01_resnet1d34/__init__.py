@@ -265,9 +265,11 @@ def predict_config(hparams):
     ckpt = torch.load(weights_path, map_location="cpu")
     module.load_state_dict(ckpt["state_dict"], strict=False)
 
+    data_dir = Path(hparams["predict"]["data_dir"])
+    annotations = pd.DataFrame({"eeg_id": [fp.stem for fp in data_dir.glob("*.parquet")]})
     predict_dataset = HmsClassificationDataset(
-        data_dir=hparams["predict"]["data_dir"],
-        annotations=pd.read_csv(hparams["predict"]["annotations"]),
+        data_dir=data_dir,
+        annotations=annotations,
         transform=Compose(transforms(hparams)),
     )
 
