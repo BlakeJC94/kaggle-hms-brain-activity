@@ -76,7 +76,7 @@ class HmsClassificationDataset(_BaseHmsDataset):
         metadata = {
             **metadata,
             "y": np.expand_dims(label.astype(int), -1),
-            "patient_id": annotation.get("patient_id"),
+            "patient_id": annotation.get("patient_id", "None"),
         }
 
         if self.transform:
