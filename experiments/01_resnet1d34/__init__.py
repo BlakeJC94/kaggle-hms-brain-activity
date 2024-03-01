@@ -276,7 +276,7 @@ def predict_config(hparams):
         predict_dataloaders=DataLoader(
             predict_dataset,
             batch_size=hparams["config"]["batch_size"],
-            num_workers=hparams["config"].get("num_workers", os.cpu_count()) or 0,
+            num_workers=min(hparams["config"].get("num_workers", 0), os.cpu_count() or 0),
             shuffle=False,
         ),
     )
