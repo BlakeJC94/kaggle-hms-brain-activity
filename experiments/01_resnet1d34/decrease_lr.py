@@ -30,7 +30,6 @@ hparams = {
     },
     "predict": {
         "weights_path": "./01_best.ckpt",
-        "annotations": "./data/hms/test.csv",
         "data_dir": "./data/hms/test_eegs",
     }
 }

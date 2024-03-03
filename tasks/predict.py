@@ -43,6 +43,8 @@ def predict(hparams_path: str):
         return_predictions=False,
     )
 
+    logger.info("Finished predictions")
+
 
 if __name__ == "__main__":
     main()
