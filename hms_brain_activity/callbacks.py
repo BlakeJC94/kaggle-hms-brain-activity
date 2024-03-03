@@ -38,6 +38,7 @@ class SubmissionWriter(pl.callbacks.BasePredictionWriter):
 
         self.output_path = self.output_dir / self.filename
         if self.output_path.exists():
+            logger.warning(f"Removing existing '{str(self.output_path)}'.")
             self.output_path.unlink()
 
     def write_on_batch_end(
@@ -50,16 +51,19 @@ class SubmissionWriter(pl.callbacks.BasePredictionWriter):
         _batch_idx,
         _dataloader_idx=0,
     ):
-        out, md = prediction["out"], prediction["md"]
-        out = out.cpu().squeeze(-1).numpy()
-        eeg_ids = md['eeg_id']
+        out, mds = prediction["out"], prediction["md"]
 
         rows = pd.DataFrame(
-            { "eeg_id": eeg_ids, **{col: out[:,i] for i, col in enumerate(VOTE_NAMES)} }
+            {
+                "eeg_id": mds["eeg_id"],
+                **{col: out[:, i] for i, col in enumerate(VOTE_NAMES)},
+            }
         )
         rows = rows[["eeg_id", *VOTE_NAMES]]
-        sums = rows[VOTE_NAMES].sum(axis=1)
-        rows[VOTE_NAMES] = rows[VOTE_NAMES] / np.expand_dims(sums.to_numpy(), -1)
 
-        mode = "w" if not self.output_path.exists() else "a"
-        rows.to_csv(self.output_path, index=False, mode=mode)
+        opts = (
+            dict(mode="w", header=True)
+            if not self.output_path.exists()
+            else dict(mode="a", header=False)
+        )
+        rows.to_csv(self.output_path, index=False, **opts)

@@ -258,7 +258,15 @@ def train_config(hparams):
 def predict_config(hparams):
     module = PredictModule(
         model_config(hparams),
-        transform=lambda y_pred, md: (torch.exp(y_pred), md),
+        transform=Compose(
+            [
+                lambda y_pred, md: (y_pred.squeeze(-1), md),
+                lambda y_pred, md: (torch.exp(y_pred), md),
+                lambda y_pred, md: (y_pred.to(torch.double), md),
+                lambda y_pred, md: (torch.softmax(y_pred, axis=1), md),
+                lambda y_pred, md: (y_pred.cpu().numpy(), md),
+            ]
+        ),
     )
 
     weights_path = Path(hparams["predict"]["weights_path"])
@@ -266,7 +274,9 @@ def predict_config(hparams):
     module.load_state_dict(ckpt["state_dict"], strict=False)
 
     data_dir = Path(hparams["predict"]["data_dir"])
-    annotations = pd.DataFrame({"eeg_id": [fp.stem for fp in data_dir.glob("*.parquet")]})
+    annotations = pd.DataFrame(
+        {"eeg_id": [fp.stem for fp in data_dir.glob("*.parquet")]}
+    )
     predict_dataset = HmsClassificationDataset(
         data_dir=data_dir,
         annotations=annotations,
