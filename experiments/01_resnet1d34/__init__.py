@@ -234,13 +234,13 @@ def train_config(hparams):
         train_dataloaders=DataLoader(
             train_dataset,
             batch_size=hparams["config"]["batch_size"],
-            num_workers=hparams["config"].get("num_workers", os.cpu_count()) or 0,
+            num_workers=num_workers(hparams),
             shuffle=True,
         ),
         val_dataloaders=DataLoader(
             val_dataset,
             batch_size=hparams["config"]["batch_size"],
-            num_workers=hparams["config"].get("num_workers", os.cpu_count()) or 0,
+            num_workers=num_workers(hparams),
             shuffle=False,
         ),
         callbacks=[
@@ -254,6 +254,11 @@ def train_config(hparams):
         ],
     )
 
+def num_workers(hparams) -> int:
+    return min(
+        hparams["config"].get("num_workers", os.cpu_count() or 0),
+        os.cpu_count() or 0,
+    )
 
 def predict_config(hparams):
     module = PredictModule(
@@ -288,7 +293,7 @@ def predict_config(hparams):
         predict_dataloaders=DataLoader(
             predict_dataset,
             batch_size=hparams["config"]["batch_size"],
-            num_workers=min(hparams["config"].get("num_workers", 0), os.cpu_count() or 0),
+            num_workers=num_workers(hparams),
             shuffle=False,
         ),
     )
