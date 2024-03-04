@@ -53,10 +53,6 @@ class TrainModule(pl.LightningModule):
         self.scheduler_factory = scheduler_factory
 
         metrics = metrics or {}
-        metrics = {
-            k: metric if isinstance(metric, Metric) else PooledMean(metric)
-            for k, metric in metrics.items()
-        }
         self.metrics = nn.ModuleDict(
             {
                 f"{k}_metrics": nn.ModuleDict(deepcopy(metrics))
