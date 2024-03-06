@@ -177,7 +177,7 @@ def transforms(hparams):
 def train_config(hparams):
     module = TrainModule(
         model_config(hparams),
-        loss_function=nn.KLDivLoss(reduction="batchmean", log_target=True),
+        loss_function=nn.KLDivLoss(reduction="batchmean"),
         metrics={
             "mse": MeanSquaredError(),
         },
