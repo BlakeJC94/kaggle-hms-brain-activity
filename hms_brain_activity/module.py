@@ -9,8 +9,6 @@ from torch import nn
 from torch.optim import Optimizer, lr_scheduler
 from torchmetrics import Metric, MeanMetric
 
-from hms_brain_activity.metrics import PooledMean
-
 try:
     from clearml import Logger
 except ImportError:
