@@ -3,12 +3,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Any, Dict
 
-from clearml import Task
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from hms_brain_activity.utils import import_script_as_module
 from hms_brain_activity.paths import get_task_dir_name
 
+
+try:
+    from clearml import Task
+except ImportError:
+    Task = None
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +39,7 @@ class ClearMlLogger(TensorBoardLogger):
     ):
         root_dir = Path(root_dir)
 
-        if offline:
+        if offline or Task is None:
             task = _OfflineTask(task_name)
         else:
             task = self.setup_task(hparams, config_path, task_name)
