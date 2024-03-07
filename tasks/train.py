@@ -46,11 +46,11 @@ def train(
         logger.info("PDB")
 
     # Get config from hparams
-    hparams = get_hparams(hparams_path, dev_run)
-    config_path = hparams["config"].get(
-        "path",
-        str(Path(hparams_path).parent / "__init__.py"),
-    )
+    hparams, config_path = get_hparams_and_config_path(hparams_path, dev_run)
+    config = compile_config(hparams, config_path, pdb, "train_config")
+    hparams, config = load_weights(hparams, config)
+
+    # Create task name
     task_name = "-".join(Path(hparams_path).parts[-2:]).removesuffix(".py")
     if dev_run:
         task_name = f"DEV RUN: {task_name}"
@@ -67,9 +67,9 @@ def train(
     task = clearml_logger.task
     save_dir = ARTIFACTS_DIR / f"{get_task_dir_name(task)}/train"
 
-    # Compile config (and get previous checkpoint if requested)
-    config = compile_config(hparams, config_path, pdb)
-    hparams, config = load_weights(hparams, config)
+    logger.info("hparams =")
+    logger.info(print_dict(hparams))
+    logger.info(f"Using config at '{config_path}'")
 
     # Initialise callbacks
     callbacks = [
@@ -87,8 +87,7 @@ def train(
             *callbacks,
         ]
 
-    # Prepare trainer
-    trainer_init_kwargs = hparams["trainer"].get("init", {})
+    # Initialise trainer and kwargs
     trainer_fit_kwargs = hparams["trainer"].get("fit", {})
     trainer_init_kwargs = {
         "logger": clearml_logger,
@@ -96,17 +95,16 @@ def train(
         "callbacks": callbacks,
         "num_sanity_val_steps": 0,
         "max_epochs": -1,
-        **trainer_init_kwargs,
+        **hparams["trainer"].get("init", {}),
     }
+    trainer = pl.Trainer(**trainer_init_kwargs)
 
     logger.info("trainer_init_kwargs =")
     logger.info(print_dict(trainer_init_kwargs))
-
     logger.info("trainer_fit_kwargs =")
     logger.info(print_dict(trainer_fit_kwargs))
 
-    # Trainer.fit
-    trainer = pl.Trainer(**trainer_init_kwargs)
+    # Validate, then fit model
     try:
         trainer.validate(config["model"], dataloaders=config["val_dataloaders"])
         trainer.fit(
@@ -127,15 +125,19 @@ def train(
     return task.id
 
 
-def get_hparams(
+def get_hparams_and_config_path(
     hparams_path: Path,
     dev_run: bool,
-) -> Dict[str, Any]:
+) -> Tuple[Dict[str, Any], str]:
     hparams = import_script_as_module(hparams_path).hparams
     if dev_run:
         hparams = set_hparams_debug_overrides(hparams)
 
-    return hparams
+    config_path = hparams["config"].get(
+        "path",
+        str(Path(hparams_path).parent / "__init__.py"),
+    )
+    return hparams, config_path
 
 
 def set_hparams_debug_overrides(hparams):
@@ -158,11 +160,6 @@ def compile_config(
     pdb: bool,
     field: str = "train_config",
 ) -> Dict[str, Any]:
-    logger.info("hparams =")
-    logger.info(print_dict(hparams))
-
-    logger.info(f"Using config at '{config_path}'")
-
     config_fn = getattr(import_script_as_module(config_path), field)
     logger.info("Setting hparams on config")
 
