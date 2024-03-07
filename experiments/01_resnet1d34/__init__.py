@@ -254,11 +254,13 @@ def train_config(hparams):
         ],
     )
 
+
 def num_workers(hparams) -> int:
     return min(
         hparams["config"].get("num_workers", os.cpu_count() or 0),
         os.cpu_count() or 0,
     )
+
 
 def predict_config(hparams):
     module = PredictModule(
