@@ -10,6 +10,7 @@ from torch import nn, optim
 from torch.utils.data import DataLoader
 from torchmetrics import MeanSquaredError
 from torchvision.transforms.v2 import Compose
+from torchvision.ops.stochastic_depth import StochasticDepth
 
 from hms_brain_activity.module import TrainModule, PredictModule
 from hms_brain_activity.datasets import HmsClassificationDataset
@@ -123,6 +124,7 @@ class ResNet1d34Backbone(nn.Sequential):
             conv5_3=BasicBlock1d(in_channels5, self.channels[3], stride=1),
         )
         self.conv5 = nn.Sequential(conv5)
+
         self.init_weights()
 
     def init_weights(self):
@@ -143,6 +145,166 @@ class ClassificationHead1d(nn.Sequential):
 
         self.avg_pool = nn.AdaptiveAvgPool1d(1)
         self.fc = nn.Conv1d(num_channels, num_classes, 1)
+
+
+# %%
+
+# inverted_residual_setting = [
+#     FusedMBConvConfig(1, 3, 1, 24, 24, 2),
+#     FusedMBConvConfig(4, 3, 2, 24, 48, 4),
+#     FusedMBConvConfig(4, 3, 2, 48, 64, 4),
+#     MBConvConfig(4, 3, 2, 64, 128, 6),
+#     MBConvConfig(6, 3, 1, 128, 160, 9),
+#     MBConvConfig(6, 3, 2, 160, 256, 15),
+# ]
+# last_channel = 1280
+
+# EfficientNet(
+#     inverted_residual_setting,
+#     dropout,
+#     last_channel=last_channel,
+#     norm_layer=partial(nn.BatchNorm2d, eps=1e-03),
+#     **kwargs,
+# )
+
+# Conv2dNormActivation(
+#     3,
+#     firstconv_output_channels,
+#     kernel_size=3,
+#     stride=2,
+#     norm_layer=norm_layer,
+#     activation_layer=nn.SiLU,
+# )
+
+class MBConv(nn.Module):
+    def adjust_channels()
+    def __init__(
+        self,
+        cnf: MBConvConfig,
+        stochastic_depth_prob: float,
+        norm_layer: Callable[..., nn.Module],
+        se_layer: Callable[..., nn.Module] = SqueezeExcitation,
+    ) -> None:
+        super().__init__()
+
+        self.use_res_connect = cnf.stride == 1 and cnf.input_channels == cnf.out_channels
+
+        layers: List[nn.Module] = []
+        activation_layer = nn.SiLU
+
+        # expand
+        expanded_channels = cnf.adjust_channels(cnf.input_channels, cnf.expand_ratio)
+        if expanded_channels != cnf.input_channels:
+            layers.append(
+                Conv2dNormActivation(
+                    cnf.input_channels,
+                    expanded_channels,
+                    kernel_size=1,
+                    norm_layer=norm_layer,
+                    activation_layer=activation_layer,
+                )
+            )
+
+        # depthwise
+        layers.append(
+            Conv2dNormActivation(
+                expanded_channels,
+                expanded_channels,
+                kernel_size=cnf.kernel,
+                stride=cnf.stride,
+                groups=expanded_channels,
+                norm_layer=norm_layer,
+                activation_layer=activation_layer,
+            )
+        )
+
+        # squeeze and excitation
+        squeeze_channels = max(1, cnf.input_channels // 4)
+        layers.append(se_layer(expanded_channels, squeeze_channels, activation=partial(nn.SiLU, inplace=True)))
+
+        # project
+        layers.append(
+            Conv2dNormActivation(
+                expanded_channels, cnf.out_channels, kernel_size=1, norm_layer=norm_layer, activation_layer=None
+            )
+        )
+
+        self.block = nn.Sequential(*layers)
+        self.stochastic_depth = StochasticDepth(stochastic_depth_prob, "row")
+        self.out_channels = cnf.out_channels
+
+    def forward(self, input: Tensor) -> Tensor:
+        result = self.block(input)
+        if self.use_res_connect:
+            result = self.stochastic_depth(result)
+            result += input
+        return result
+
+
+class Conv2dNormAct(nn.Sequential):
+    def __init__(self, in_channels, out_channels, kernel_size, norm_cls=None, act_cls=None, **conv_kwargs):
+        super().__init__()
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, **conv_kwargs)
+        if not conv_kwargs.get("bias") is None:
+            conv_kwargs["bias"] = norm_cls is None
+
+        if norm_cls is not None:
+            self.bn = norm_cls(out_channels)
+        if act_cls is not None:
+            self.act = act_cls()
+
+
+
+class EfficientNetV2sBackbone(nn.Sequential):
+    channels = (24, 24, 48, 64, 128, 160, 256)
+
+    def __init__(self, in_channels: int):
+        super().__init__(self)
+        self.in_channels = in_channels
+
+        # Layer 0: conv 3x3 s2
+        self.layer0 = Conv2dNormAct(
+            in_channels,
+            out_channels=self.channels[0],
+            kernel_size=3,
+            stride=2,
+            norm_cls=nn.BatchNorm2d,
+            act_cls=nn.SiLU,
+            padding=0,
+            bias=False,
+        )
+
+        # Layer 1: fused-mbconv1 3x3 s1
+        layer1 =
+        # Layer 2: fused-mbconv1 3x3 s2
+        # Layer 3: fused-mbconv4 3x3 s2
+
+        # Layer 4: mbconv4 3x3 s2
+        # Layer 5: mbconv4 3x3 s1
+        # Layer 6: mbconv4 3x3 s2
+
+        self.init_weights()
+
+    def init_weights(self):
+        self.apply(self._init_weight_bias)
+
+    def _init_weight_bias(self, module):
+        if isinstance(module, nn.Conv2d):
+            nn.init.kaiming_normal_(module.weight)
+            if module.bias is not None:
+                nn.init.constant_(module.bias, 0.01)
+        elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
+            nn.init.ones_(m.weight)
+            nn.init.zeros_(m.bias)
+        elif isinstance(m, nn.Linear):
+            init_range = 1.0 / math.sqrt(m.out_features)
+            nn.init.uniform_(m.weight, -init_range, init_range)
+            nn.init.zeros_(m.bias)
+
+    ...
+
+
+# %%
 
 
 def model_config(hparams):
@@ -254,11 +416,13 @@ def train_config(hparams):
         ],
     )
 
+
 def num_workers(hparams) -> int:
     return min(
         hparams["config"].get("num_workers", os.cpu_count() or 0),
         os.cpu_count() or 0,
     )
+
 
 def predict_config(hparams):
     module = PredictModule(

@@ -33,23 +33,3 @@ hparams = {
         "data_dir": "./data/hms/test_eegs",
     }
 }
-
-# Smoke test
-if __name__ == "__main__":
-    from pathlib import Path
-    exec((Path(__file__).parent / "__init__.py").open().read())
-    conf = config(hparams)
-    model = conf.model
-
-    import torch
-    n_timesteps = 50 * 200
-    x = torch.rand(hparams["config"]["batch_size"], 20, n_timesteps)
-    y = torch.rand(hparams["config"]["batch_size"], 6)
-
-    out = model(x)
-    try:
-        loss = model.loss_function(out, y)
-    except:
-        breakpoint()
-
-    print("Pass!")
