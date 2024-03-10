@@ -21,6 +21,9 @@ CHANNEL_NAMES = [
     "EKG",
 ]
 
+CHANNEL_NEAMS_EEG = CHANNEL_NAMES[:-1]  # 19
+CHANNEL_NEAMS_ECG = CHANNEL_NAMES[-1:]  # 1
+
 VOTE_NAMES = [
     "seizure_vote",
     "lpd_vote",

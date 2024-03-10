@@ -15,6 +15,7 @@ from hms_brain_activity.module import TrainModule, PredictModule
 from hms_brain_activity.datasets import HmsClassificationDataset
 from hms_brain_activity import transforms as t
 from hms_brain_activity.utils import split_annotations_across_patients
+from hms_brain_activity.paths import DATA_PROCESSED_DIR
 
 
 class BasicBlock1d(nn.Module):
@@ -195,23 +196,19 @@ def train_config(hparams):
         },
     )
 
-    annotations = pd.read_csv("./data/hms/train.csv")
-
-    train_annotations, val_annotations = split_annotations_across_patients(
-        annotations,
-        test_size=0.2,
-        random_state=0,
-    )
-
     data_dir = "./data/hms/train_eegs"
 
     train_dataset = HmsClassificationDataset(
         data_dir=data_dir,
-        annotations=train_annotations,
-        transform=Compose(
+        annotations=pd.read_csv(DATA_PROCESSED_DIR / "train.csv"),
+        augmentation=Compose(
             [
                 t.RandomSaggitalFlipNpArray(),
                 t.RandomScale(),
+            ]
+        ),
+        transform=Compose(
+            [
                 *transforms(hparams),
                 t.VotesToProbabilities(),
             ]
@@ -220,7 +217,7 @@ def train_config(hparams):
 
     val_dataset = HmsClassificationDataset(
         data_dir=data_dir,
-        annotations=val_annotations,
+        annotations=pd.read_csv(DATA_PROCESSED_DIR / "val.csv"),
         transform=Compose(
             [
                 *transforms(hparams),
