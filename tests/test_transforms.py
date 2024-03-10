@@ -5,7 +5,7 @@ from hms_brain_activity import transforms as t
 from hms_brain_activity.globals import CHANNEL_NAMES
 
 
-class MockMontage(t._BaseMontage):
+class MockMontage(t._BaseMontageNpArray):
     montage = [("Fp1", "F3"), ("P3", "C3"), ("F7", "")]  # 0, 1  # 3, 2  # 4
 
 
