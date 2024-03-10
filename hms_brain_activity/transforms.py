@@ -1,11 +1,12 @@
 import abc
 import random
-from typing import List, Tuple, Literal
+from typing import List, Tuple, Literal, Any, Optional, Iterable
 
 import torch
 import numpy as np
 from torch import nn
 from scipy import signal
+from torchvision.transforms.v2 import Compose
 
 from hms_brain_activity.globals import CHANNEL_NAMES
 from hms_brain_activity.utils import saggital_flip_channel
@@ -23,6 +24,37 @@ class _BaseTransform(nn.Module, abc.ABC):
         return x, md
 
 
+class TransformIterable(_BaseTransform):
+    def __init__(self, transform, apply_to: List[Any]):
+        super().__init__()
+        self.transform = transform
+        self.apply_to = apply_to
+
+    def compute(self, x: Iterable, md=None):
+        for i in self.apply_to:
+            x[i], md = self.transform(x[i], md)
+        return x, md
+
+
+class TransformCompose(_BaseTransform):
+    def __init__(self, *transforms):
+        super().__init__()
+        self.transforms = transforms
+        self.transform = Compose(transforms)
+
+    def compute(self, x, md):
+        return self.transform(x, md)
+
+    def __len__(self):
+        return len(self.transforms)
+
+    def __getitem__(self, i):
+        foo = self.transform.transforms[i]
+        if isinstance(foo, list):
+            return Compose(foo)
+        return foo
+
+
 class FillNanNpArray(_BaseTransform):
     def __init__(self, val):
         super().__init__()
@@ -33,6 +65,84 @@ class FillNanNpArray(_BaseTransform):
         if "y" in md:
             md["y"] = np.nan_to_num(md["y"].copy(), self.val)
         return x, md
+
+
+class Pad(_BaseTransform):
+    def __init__(
+        self,
+        padlen: int,
+        mode: Literal["odd", "even", "const"] = "odd",
+        val: float = 0.0,
+    ):
+        super().__init__()
+        self.padlen = int(padlen)
+        self.mode = mode
+        self.val = val
+
+    @staticmethod
+    def odd_ext(x, n):
+        left_end = x[..., :1]
+        left_ext = np.flip(x[..., 1 : n + 1], axis=-1)
+
+        right_end = x[..., -1:]
+        right_ext = np.flip(x[..., -(n + 1) : -1], axis=-1)
+
+        return np.concatenate(
+            (
+                2 * left_end - left_ext,
+                x,
+                2 * right_end - right_ext,
+            ),
+            axis=-1,
+        )
+
+    @staticmethod
+    def even_ext(x, n):
+        left_ext = np.flip(x[..., 1 : n + 1], axis=-1)
+        right_ext = np.flip(x[..., -(n + 1) : -1], axis=-1)
+        return np.concatenate(
+            (
+                left_ext,
+                x,
+                right_ext,
+            ),
+            axis=-1,
+        )
+
+    @staticmethod
+    def _pad_const(x, n, val=0):
+        ext = val * np.ones_like(x)[..., :n]
+        return np.concatenate(
+            (
+                ext,
+                x,
+                ext,
+            ),
+            axis=-1,
+        )
+
+    def compute(self, x, md):
+        if self.mode == "odd":
+            x = self.odd_ext(x, self.padlen)
+        elif self.mode == "even":
+            x = self.even_ext(x, self.padlen)
+        else:
+            x = self.const_ext(x, self.padlen, self.val)
+        return x, md
+
+
+class Unpad(_BaseTransform):
+    def __init__(self, padlen: int):
+        super().__init__()
+        self.padlen = int(padlen)
+
+    def compute(self, x, md):
+        return x[..., self.padlen : -self.padlen], md
+
+
+class JoinArrays(_BaseTransform):
+    def compute(self, x, md):
+        return np.concatenate([v for _, v in x.items()], axis=0), md
 
 
 class PadNpArray(_BaseTransform):
@@ -201,6 +311,16 @@ class TanhClipNpArray(_BaseTransform):
 
     def compute(self, x, md):
         x = np.tanh(x / self.abs_bound) * self.abs_bound
+        return x, md
+
+
+class Scale(_BaseTransform, abc.ABC):
+    def __init__(self, scalar: float):
+        super().__init__()
+        self.scalar = scalar
+
+    def compute(self, x, md):
+        x = x * self.scalar
         return x, md
 
 
