@@ -12,9 +12,8 @@ from torchmetrics import MeanSquaredError
 from torchvision.transforms.v2 import Compose
 
 from hms_brain_activity.module import TrainModule, PredictModule
-from hms_brain_activity.datasets import HmsClassificationDataset
+from hms_brain_activity.datasets import HmsDataset, HmsPredictDataset
 from hms_brain_activity import transforms as t
-from hms_brain_activity.utils import split_annotations_across_patients
 from hms_brain_activity.paths import DATA_PROCESSED_DIR
 
 
@@ -158,19 +157,26 @@ def model_config(hparams):
 
 def transforms(hparams):
     return [
-        t.FillNanNpArray(0),
-        t.PadNpArray(
-            t.BandPassNpArray(
-                hparams["config"]["bandpass_low"],
-                hparams["config"]["bandpass_high"],
-                hparams["config"]["sample_rate"],
-            ),
-            padlen=hparams["config"]["sample_rate"],
+        *[
+            t.TransformIterable(transform, apply_to=["EEG"])
+            for transform in [
+                t.Pad(padlen=hparams["config"]["sample_rate"]),
+                t.BandPassNpArray(
+                    hparams["config"]["bandpass_low"],
+                    hparams["config"]["bandpass_high"],
+                    hparams["config"]["sample_rate"],
+                ),
+                t.Unpad(padlen=hparams["config"]["sample_rate"]),
+                t.Scale(1 / (35 * 1.5)),
+                t.DoubleBananaMontageNpArray(),
+            ]
+        ],
+        t.TransformIterable(
+            t.Scale(1 / 1e4),
+            apply_to=["ECG"],
         ),
-        t.ScaleEEG(1 / (35 * 1.5)),
-        t.ScaleECG(1 / 1e4),
+        t.JoinArrays(),
         t.TanhClipNpArray(4),
-        t.DoubleBananaMontageNpArray(),
         t.ToTensor(),
     ]
 
@@ -198,31 +204,27 @@ def train_config(hparams):
 
     data_dir = "./data/hms/train_eegs"
 
-    train_dataset = HmsClassificationDataset(
+    train_dataset = HmsDataset(
         data_dir=data_dir,
         annotations=pd.read_csv(DATA_PROCESSED_DIR / "train.csv"),
-        augmentation=Compose(
-            [
+        augmentation=t.TransformCompose(
+            t.TransformIterable(
                 t.RandomSaggitalFlipNpArray(),
-                t.RandomScale(),
-            ]
+                apply_to=["EEG"]
+            )
         ),
-        transform=Compose(
-            [
-                *transforms(hparams),
-                t.VotesToProbabilities(),
-            ]
+        transform=t.TransformCompose(
+            *transforms(hparams),
+            t.VotesToProbabilities(),
         ),
     )
 
-    val_dataset = HmsClassificationDataset(
+    val_dataset = HmsDataset(
         data_dir=data_dir,
         annotations=pd.read_csv(DATA_PROCESSED_DIR / "val.csv"),
-        transform=Compose(
-            [
-                *transforms(hparams),
-                t.VotesToProbabilities(),
-            ],
+        transform=t.TransformCompose(
+            *transforms(hparams),
+            t.VotesToProbabilities(),
         ),
     )
 
@@ -279,7 +281,7 @@ def predict_config(hparams):
     annotations = pd.DataFrame(
         {"eeg_id": [fp.stem for fp in data_dir.glob("*.parquet")]}
     )
-    predict_dataset = HmsClassificationDataset(
+    predict_dataset = HmsPredictDataset(
         data_dir=data_dir,
         annotations=annotations,
         transform=Compose(transforms(hparams)),
