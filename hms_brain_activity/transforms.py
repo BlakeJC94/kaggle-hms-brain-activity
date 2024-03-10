@@ -330,7 +330,9 @@ class _BaseScaleChannels(_BaseTransform, abc.ABC):
         self.scalar = scalar
 
     def compute(self, x, md):
-        x_slice = tuple(self.ch_slice if i == x.ndim - 2 else slice(None) for i in range(x.ndim))
+        x_slice = tuple(
+            self.ch_slice if i == x.ndim - 2 else slice(None) for i in range(x.ndim)
+        )
         x[x_slice] = x[x_slice] / self.scalar
         return x, md
 
@@ -348,14 +350,19 @@ class _BaseMontageNpArray(_BaseTransform, abc.ABC):
 
     def __init__(self):
         super().__init__()
-        n_channels = len(CHANNEL_NAMES)
+        eeg_channel_names = CHANNEL_NAMES[:-1]
+        n_channels = len(eeg_channel_names)
         montage_mat = np.zeros((n_channels, len(self.montage)))
         for j, (ch_1, ch_2) in enumerate(self.montage):
-            ch_idx_1 = CHANNEL_NAMES.index(ch_1) if ch_1 in CHANNEL_NAMES else None
+            ch_idx_1 = (
+                eeg_channel_names.index(ch_1) if ch_1 in eeg_channel_names else None
+            )
             if ch_idx_1 is not None:
                 montage_mat[ch_idx_1, j] = 1
 
-            ch_idx_2 = CHANNEL_NAMES.index(ch_2) if ch_2 in CHANNEL_NAMES else None
+            ch_idx_2 = (
+                eeg_channel_names.index(ch_2) if ch_2 in eeg_channel_names else None
+            )
             if ch_idx_2 is not None:
                 montage_mat[ch_idx_2, j] = -1
 
@@ -390,12 +397,11 @@ class DoubleBananaMontageNpArray(_BaseMontageNpArray):
         ("P4", "O2"),
         ("Fz", "Cz"),
         ("Cz", "Pz"),
-        ("EKG", ""),
     ]
 
 
 class RandomSaggitalFlipNpArray(_BaseMontageNpArray):
-    montage = [(saggital_flip_channel(ch), "") for ch in CHANNEL_NAMES]
+    montage = [(saggital_flip_channel(ch), "") for ch in CHANNEL_NAMES[:-1]]
 
     def compute(self, x, md):
         if random.random() < 0.5:
