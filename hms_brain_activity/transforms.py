@@ -321,7 +321,11 @@ class Scale(_BaseTransform, abc.ABC):
         self.scalar = scalar
 
     def compute(self, x, md):
-        x = x * self.scalar
+        if not isinstance(self.scalar, dict):
+            x = x * self.scalar
+        else:
+            for k, v in self.scalar.keys():
+                x[k] = x[k] * self.scalar
         return x, md
 
 
