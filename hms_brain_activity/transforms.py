@@ -1,6 +1,6 @@
 import abc
 import random
-from typing import List, Tuple, Literal, Any, Optional, Iterable
+from typing import List, Tuple, Literal, Any, Iterable
 
 import torch
 import numpy as np
