@@ -1,8 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
-from os import PathLike
-from typing import Tuple, Optional, Callable, Any, Dict, Union
+from typing import Tuple, Optional, Callable, Any, Dict, TypeAlias
 
 import numpy as np
 import pandas as pd
@@ -16,14 +15,13 @@ from hms_brain_activity.globals import CHANNEL_NAMES, VOTE_NAMES
 logger = logging.getLogger(__name__)
 
 
-
 class _BaseHmsDataset(Dataset):
     sample_rate = 200.0  # Hz
     sample_secs = 50.0  # s
     channel_names = CHANNEL_NAMES
     vote_names = VOTE_NAMES
 
-    def get_data(self, eeg_path: PathLike, start: int = 0, duration: int = 50 * 200):
+    def get_data(self, eeg_path: str | Path, start: int = 0, duration: int = 50 * 200):
         data = pd.read_parquet(eeg_path)
         data = data[self.channel_names]
         data = data.iloc[start : start + duration].to_numpy().transpose()
@@ -32,7 +30,7 @@ class _BaseHmsDataset(Dataset):
 
 
 class HmsPredictDataset(_BaseHmsDataset):
-    def __init__(self, data_dir: PathLike, transform: Optional[Callable] = None):
+    def __init__(self, data_dir: str | Path, transform: Optional[Callable] = None):
         self.data_dir = Path(data_dir)
         self.transform = transform
 
@@ -97,7 +95,7 @@ class HmsClassificationDataset(_BaseHmsDataset):
 
 # ---
 
-CollateData = Union[int, float, str, np.ndarray, torch.Tensor]
+CollateData: TypeAlias = int | float | str | np.ndarray | torch.Tensor
 
 
 class BaseDataset(Dataset, ABC):
@@ -154,7 +152,7 @@ class HmsReaderMixin(Dataset):
     }
     nan_val = 0
 
-    def read_data(self, eeg_path: PathLike, start: int = 0, duration: int = 50 * 200):
+    def read_data(self, eeg_path: str | Path, start: int = 0, duration: int = 50 * 200):
         data = pd.read_parquet(eeg_path)
         data = data[self.channel_names]
         data = data.iloc[start : start + duration].to_numpy().transpose()
@@ -211,7 +209,7 @@ class HmsDataset(BaseDataset, HmsReaderMixin):
             "patient_id": annotation.get("patient_id", "None"),
         }
 
-    def get_data(self, eeg_path: PathLike, start: int = 0, duration: int = 50 * 200):
+    def get_data(self, eeg_path: str | Path, start: int = 0, duration: int = 50 * 200):
         data = pd.read_parquet(eeg_path)
         data = data[self.channel_names]
         data = data.iloc[start : start + duration].to_numpy().transpose()
@@ -220,7 +218,7 @@ class HmsDataset(BaseDataset, HmsReaderMixin):
 
 
 class PredictHmsDataset(HmsDataset):
-    def __init__(self, data_dir: PathLike, transform: Optional[Callable] = None):
+    def __init__(self, data_dir: str | Path, transform: Optional[Callable] = None):
         self.data_dir = Path(data_dir)
         self.transform = transform
 

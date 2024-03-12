@@ -1,6 +1,6 @@
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Union, List, Tuple, Callable
+from typing import Any, Dict, Optional, Union, List, Tuple, Callable, TypeAlias
 from warnings import warn
 
 import dash
@@ -14,8 +14,8 @@ from plotly import graph_objects as go
 from hms_brain_activity.datasets import BaseDataset
 from hms_brain_activity.transforms import TransformIterable, TransformCompose
 
-TabularData = Union[pd.DataFrame, np.ndarray]
-Control = Union[dbc.Label, html.Div, dcc.Slider]
+TabularData: TypeAlias = Union[pd.DataFrame, np.ndarray]
+Control: TypeAlias = Union[dbc.Label, html.Div, dcc.Slider]
 
 
 def extract_transforms(
