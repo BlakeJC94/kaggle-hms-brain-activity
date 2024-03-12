@@ -25,7 +25,6 @@ import pandas as pd
 from torch import nn, optim
 from torch.utils.data import DataLoader
 from torchmetrics import MeanSquaredError
-from torchvision.transforms.v2 import Compose
 from torchvision.models.efficientnet import efficientnet_v2_s
 from torchaudio.transforms import Spectrogram
 
@@ -102,23 +101,33 @@ def model_config(hparams):
 def transforms(hparams):
     return [
         *[
-            t.TransformIterable(transform, apply_to=["EEG"])
+            t.TransformIterable(["EEG"], transform)
             for transform in [
-                t.Pad(padlen=hparams["config"]["sample_rate"]),
-                t.BandPassNpArray(
+                t.Pad(padlen=2 * hparams["config"]["sample_rate"]),
+                t.HighPassNpArray(
                     hparams["config"]["bandpass_low"],
+                    hparams["config"]["sample_rate"],
+                ),
+                t.LowPassNpArray(
                     hparams["config"]["bandpass_high"],
                     hparams["config"]["sample_rate"],
                 ),
-                t.Unpad(padlen=hparams["config"]["sample_rate"]),
-                t.Scale(1 / (35 * 1.5)),
-                t.DoubleBananaMontageNpArray(),
+                t.NotchNpArray(
+                    45,
+                    55,
+                    hparams["config"]["sample_rate"],
+                ),
+
+                t.NotchNpArray(
+                    55,
+                    65,
+                    hparams["config"]["sample_rate"],
+                ),
+                t.Unpad(padlen=2 * hparams["config"]["sample_rate"]),
             ]
         ],
-        t.TransformIterable(
-            t.Scale(1 / 1e4),
-            apply_to=["ECG"],
-        ),
+        t.Scale({"EEG": 1 / (35*1.5), "ECG": 1/1e4}),
+        t.TransformIterable(["EEG"], t.DoubleBananaMontageNpArray()),
         t.JoinArrays(),
         t.TanhClipNpArray(4),
         t.ToTensor(),
@@ -172,10 +181,7 @@ def train_config(hparams):
         data_dir=data_dir,
         annotations=pd.read_csv(DATA_PROCESSED_DIR / "train.csv"),
         augmentation=t.TransformCompose(
-            t.TransformIterable(
-                t.RandomSaggitalFlipNpArray(),
-                apply_to=["EEG"]
-            )
+            t.TransformIterable(["EEG"], t.RandomSaggitalFlipNpArray())
         ),
         transform=t.TransformCompose(
             *transforms(hparams),
@@ -265,4 +271,3 @@ def predict_config(hparams):
             shuffle=False,
         ),
     )
-
