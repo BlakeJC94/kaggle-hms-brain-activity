@@ -1,10 +1,11 @@
 from itertools import product
-from typing import Callable, Optional, List
+from typing import Callable, List
 
 import torch
-import pandas as pd
+import numpy as np
 from torchmetrics import Metric
 from plotly import graph_objects as go
+from plotly.subplots import make_subplots
 
 
 class MetricWrapper(Metric):
@@ -44,68 +45,68 @@ class _BaseProbabilityPlotMetric(Metric):
         pass
 
     def plot(self) -> go.Figure:
-        fig = go.Figure()
-        boundaries = torch.linspace(0, 1, self.n_bins + 1)[:-1]
+        yaxis_title="Probability"
 
-        # TODO try to repeat the values, not scale them!
-        left_histogram = self.histogram[:, 0, :].cpu()
-        left_density = 1000 * left_histogram / left_histogram.sum(0, keepdim=True)
-        left_data = left_density * boundaries.unsqueeze(0)
-        left_data = left_data.numpy()
-
-        right_histogram = self.histogram[:, 1, :].cpu()
-        right_density = 1000 * right_histogram / right_histogram.sum(0, keepdim=True)
-        right_data = right_density * boundaries.unsqueeze(0)
-        right_data = right_data.numpy()
-
-        df = pd.DataFrame()
-        for class_idx in range(self.n_classes):
-            n_left = left_data.shape[-1]
-            n_right = right_data.shape[-1]
-            df = pd.concat(
-                [
-                    df,
-                    pd.DataFrame(
-                        {
-                            "class": [self.class_names[class_idx]] * n_left,
-                            "prob": left_data[class_idx],
-                            "left": [True] * n_left,
-                        }
+        num_labels = len(self.class_names)
+        num_bins = self.histogram.shape[-1]
+        fig = make_subplots(rows=1, cols=num_labels * 2, horizontal_spacing=0.001, shared_yaxes=True)
+        for label_id, label_name in enumerate(self.class_names):
+            for target_id in range(2):
+                target_name = f"Target = {target_id}"
+                histogram = self.histogram[label_id, target_id].cpu()
+                col = label_id * 2 + target_id + 1
+                fig.add_trace(
+                    go.Bar(
+                        x=histogram,
+                        y=np.linspace(start=0, stop=1, num=num_bins, endpoint=False),
+                        name=target_name,
+                        orientation="h",
+                        marker=dict(color="blue" if target_id == 0 else "orange"),
                     ),
-                    pd.DataFrame(
-                        {
-                            "class": [self.class_names[class_idx]] * n_right,
-                            "prob": right_data[class_idx],
-                            "left": [False] * n_right,
-                        }
-                    ),
-                ]
-            )
+                    row=1,
+                    col=col,
+                )
 
-        fig.add_trace(
-            go.Violin(
-                x=df["class"][df["left"] == True],
-                y=df["prob"][df["left"] == True],
-                legendgroup="Yes",
-                scalegroup="Yes",
-                name="Yes",
-                side="negative",
-                line_color="blue",
+                # Reverse axes and remove tick labels to create back-to-back plots
+                x_max = histogram.max()
+                fig.update_xaxes(range=[x_max, 0] if target_id == 0 else [0, x_max], row=1, col=col)
+                fig.update_yaxes(showticklabels=True if col == 1 else False, row=1, col=col)
+
+                # Calculate and plot estimates for Q1, Median and Q3
+                cdf = np.cumsum(histogram)
+                bin_inds = np.searchsorted(cdf, cdf[-1] * np.array([0.25, 0.5, 0.75]))
+                quantiles = (bin_inds / num_bins * 1).tolist()
+                fig.add_trace(
+                    go.Scatter(
+                        x=[x_max / 2] * 3,
+                        y=quantiles,
+                        mode="markers",
+                        marker=dict(color="black"),
+                        line=dict(color="black"),
+                        text=[
+                            f"{name}: {round(yval,2)}"
+                            for name, yval in zip(["Q1", "Median", "Q3"], quantiles)
+                        ],
+                        hoverinfo="text",
+                    ),
+                    row=1,
+                    col=col,
+                )
+            fig.add_annotation(
+                dict(
+                    font=dict(size=16),
+                    x=(label_id + 0.5) / num_labels,
+                    y=-0.12,
+                    showarrow=False,
+                    text=label_name,
+                    xanchor="center",
+                    xref="paper",
+                )
             )
-        )
-        fig.add_trace(
-            go.Violin(
-                x=df["class"][df["left"] == False],
-                y=df["prob"][df["left"] == False],
-                legendgroup="No",
-                scalegroup="No",
-                name="No",
-                side="positive",
-                line_color="orange",
-            )
-        )
-        fig.update_traces(meanline_visible=True)
-        fig.update_layout(violingap=0, violinmode="overlay")
+        fig.update_xaxes(visible=False)
+        fig.update_layout(yaxis_title=yaxis_title)
+        for trace in fig["data"][3:] + fig["data"][1:2]:
+            trace["showlegend"] = False
         return fig
 
 
@@ -128,7 +129,7 @@ class ProbabilityDistribution(_BaseProbabilityPlotMetric):
             mask = y[:, :].argmax(1) == class_idx
             if hist_idx == 1:
                 mask = ~mask
-            self.histogram[class_idx, j, :] += torch.histc(
+            self.histogram[class_idx, hist_idx, :] += torch.histc(
                 y_pred[mask, class_idx], self.num_bins, 0, 1
             )
 
