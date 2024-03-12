@@ -125,6 +125,24 @@ def transforms(hparams):
     ]
 
 
+def metrics(hparams):
+    return {
+        "mse": MeanSquaredError(),
+        "mean_pred": m.MetricWrapper(
+            t.TransformCompose(*output_transforms(hparams)),
+            m.MeanProbability(class_names=VOTE_NAMES),
+        )
+        "prob_distribution": m.MetricWrapper(
+            t.TransformCompose(*output_transforms(hparams)),
+            m.ProbabilityDistribution(class_names=VOTE_NAMES),
+        )
+        "prob_density": m.MetricWrapper(
+            t.TransformCompose(*output_transforms(hparams)),
+            m.ProbabilityDistribution(class_names=VOTE_NAMES),
+        )
+    }
+
+
 def train_config(hparams):
     optimizer_factory = partial(
         optim.Adam,
@@ -143,9 +161,7 @@ def train_config(hparams):
     module = TrainModule(
         model_config(hparams),
         loss_function=nn.KLDivLoss(reduction="batchmean"),
-        metrics={
-            "mse": MeanSquaredError(),
-        },
+        metrics=metrics(hparams),
         optimizer_factory=optimizer_factory,
         scheduler_factory=scheduler_factory,
     )
@@ -209,16 +225,20 @@ def num_workers(hparams) -> int:
     )
 
 
+def output_transforms(hparams):
+    return [
+        lambda y_pred, md: (torch.exp(y_pred), md),
+        lambda y_pred, md: (y_pred.to(torch.double), md),
+        lambda y_pred, md: (torch.softmax(y_pred, axis=1), md),
+    ]
+
+
 def predict_config(hparams):
     module = PredictModule(
         model_config(hparams),
-        transform=Compose(
-            [
-                lambda y_pred, md: (torch.exp(y_pred), md),
-                lambda y_pred, md: (y_pred.to(torch.double), md),
-                lambda y_pred, md: (torch.softmax(y_pred, axis=1), md),
-                lambda y_pred, md: (y_pred.cpu().numpy(), md),
-            ]
+        transform=t.TransformCompose(
+            *output_transforms(hparams),
+            lambda y_pred, md: (y_pred.cpu().numpy(), md),
         ),
     )
 
@@ -233,7 +253,7 @@ def predict_config(hparams):
     predict_dataset = HmsPredictDataset(
         data_dir=data_dir,
         annotations=annotations,
-        transform=Compose(transforms(hparams)),
+        transform=t.TransformCompose(*transforms(hparams)),
     )
 
     return dict(
