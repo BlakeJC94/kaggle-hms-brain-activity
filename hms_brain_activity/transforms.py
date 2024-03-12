@@ -234,7 +234,7 @@ class _BaseFilterNpArray(_BaseTransform, abc.ABC):
         cutoffs: int | List[int],
         sample_rate: float,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        return signal.butter(
+        return signal.bessel(
             order, cutoffs, btype=self.btype, output="sos", fs=sample_rate
         )
 
