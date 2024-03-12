@@ -32,7 +32,9 @@ from torchaudio.transforms import Spectrogram
 from hms_brain_activity.module import TrainModule, PredictModule
 from hms_brain_activity.datasets import HmsDataset, HmsPredictDataset
 from hms_brain_activity import transforms as t
+from hms_brain_activity import metrics as m
 from hms_brain_activity.paths import DATA_PROCESSED_DIR
+from hms_brain_activity.globals import VOTE_NAMES
 
 
 class AggregateSpectrograms(nn.Module):
@@ -64,16 +66,16 @@ class AsymmetricSpectrograms(nn.Module):
 
 
 def model_config(hparams):
-    num_channels = 19
-    num_classes = 6
+    n_channels = 7
+    n_classes = len(VOTE_NAMES)
 
     # Create Network
-    net = efficientnet_v2_s(num_classes=num_classes)
+    net = efficientnet_v2_s(num_classes=n_classes)
 
     # Replace first convolution
     _conv0_prev = net.features[0][0]
     _conv0 = nn.Conv2d(
-        num_channels,
+        n_channels,
         _conv0_prev.out_channels,
         _conv0_prev.kernel_size,
         stride=_conv0_prev.stride,
@@ -85,8 +87,8 @@ def model_config(hparams):
 
     return nn.Sequential(
         Spectrogram(
-            int(hparams['config']["sample_rate"]),
-            hop_length=int(hparams['config']["sample_rate"]),
+            int(hparams["config"]["sample_rate"]),
+            hop_length=int(hparams["config"]["sample_rate"]),
             center=False,
             power=2,
         ),
@@ -124,24 +126,28 @@ def transforms(hparams):
 
 
 def train_config(hparams):
+    optimizer_factory = partial(
+        optim.Adam,
+        lr=hparams["config"]["learning_rate"],
+    )
+
+    scheduler_factory = lambda opt: {
+        "scheduler": optim.lr_scheduler.MultiStepLR(
+            opt,
+            milestones=hparams["config"]["milestones"],
+            gamma=hparams["config"]["gamma"],
+        ),
+        "monitor": hparams["config"]["monitor"],
+    }
+
     module = TrainModule(
         model_config(hparams),
         loss_function=nn.KLDivLoss(reduction="batchmean"),
         metrics={
             "mse": MeanSquaredError(),
         },
-        optimizer_factory=partial(
-            optim.Adam,
-            lr=hparams["config"]["learning_rate"],
-        ),
-        scheduler_factory=lambda opt: {
-            "scheduler": optim.lr_scheduler.MultiStepLR(
-                opt,
-                milestones=hparams["config"]["milestones"],
-                gamma=hparams["config"]["gamma"],
-            ),
-            "monitor": hparams["config"]["monitor"],
-        },
+        optimizer_factory=optimizer_factory,
+        scheduler_factory=scheduler_factory,
     )
 
     data_dir = "./data/hms/train_eegs"
