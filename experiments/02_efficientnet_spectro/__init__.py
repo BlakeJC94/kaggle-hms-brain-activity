@@ -1,3 +1,20 @@
+"""Apply efficientnet_v2_s to aggregated spectrograms of EEG.
+
+- Augment EEGs with random saggital flip
+- Filter and scale EEG
+- Double Banana montage
+- Scale ECG
+- Tanh clip values
+- Compute spectrograms
+- Average across electrode groups
+- Append asymmetric spectrograms across sagittal plane
+
+TODO
+- Multi-taper spectrogram
+- Better filtering
+- Heart rate feature
+
+"""
 import os
 from functools import partial
 from pathlib import Path
