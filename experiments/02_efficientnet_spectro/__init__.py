@@ -190,7 +190,6 @@ def predict_config(hparams):
         model_config(hparams),
         transform=Compose(
             [
-                lambda y_pred, md: (y_pred.squeeze(-1), md),
                 lambda y_pred, md: (torch.exp(y_pred), md),
                 lambda y_pred, md: (y_pred.to(torch.double), md),
                 lambda y_pred, md: (torch.softmax(y_pred, axis=1), md),
