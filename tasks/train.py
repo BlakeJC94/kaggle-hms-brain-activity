@@ -43,7 +43,7 @@ def train(
     if pdb:
         logger.info("PDB")
     if offline:
-        logger.info("PDB")
+        logger.info("OFFLINE")
 
     # Get config from hparams
     hparams, config_path = get_hparams_and_config_path(hparams_path, dev_run)
