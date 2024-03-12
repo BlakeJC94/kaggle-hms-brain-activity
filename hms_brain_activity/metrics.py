@@ -24,17 +24,13 @@ class MetricWrapper(Metric):
 class _BaseProbabilityPlotMetric(Metric):
     def __init__(
         self,
-        n_classes: int,
+        class_names: List[str],
         n_bins: int = 50,
-        class_names: Optional[List[str]] = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
-        if class_names is None:
-            class_names = [f"{i}" for i in range(n_classes)]
-        assert len(class_names) == n_classes
 
-        self.n_classes = n_classes
+        self.n_classes = len(class_names)
         self.n_bins = n_bins
         self.class_names = self.class_names
 
