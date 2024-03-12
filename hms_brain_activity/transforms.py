@@ -299,7 +299,8 @@ class ToTensor(_BaseTransform):
 class VotesToProbabilities(_BaseTransform):
     def compute(self, x, md):
         y = md["y"]
-        y = y / y.sum(axis=0).unsqueeze(0)
+        y = y / y.sum(axis=0, keepdim=True)
+        y = y.squeeze(-1)
         md["y"] = y
         return x, md
 
