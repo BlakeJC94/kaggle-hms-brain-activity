@@ -1,6 +1,6 @@
 import abc
 import random
-from typing import List, Tuple, Literal, Any, Iterable
+from typing import List, Tuple, Literal, Any, Iterable, Callable
 
 import torch
 import numpy as np
@@ -25,7 +25,7 @@ class _BaseTransform(nn.Module, abc.ABC):
 
 
 class TransformIterable(_BaseTransform):
-    def __init__(self, transform, apply_to: List[Any]):
+    def __init__(self, apply_to: List[Any], transform: Callable):
         super().__init__()
         self.transform = transform
         self.apply_to = apply_to
