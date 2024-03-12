@@ -1,5 +1,4 @@
 import os
-from collections import OrderedDict
 from functools import partial
 from pathlib import Path
 
@@ -10,328 +9,98 @@ from torch import nn, optim
 from torch.utils.data import DataLoader
 from torchmetrics import MeanSquaredError
 from torchvision.transforms.v2 import Compose
-from torchvision.ops.stochastic_depth import StochasticDepth
+from torchvision.models.efficientnet import efficientnet_v2_s
+from torchaudio.transforms import Spectrogram
 
 from hms_brain_activity.module import TrainModule, PredictModule
-from hms_brain_activity.datasets import HmsClassificationDataset
+from hms_brain_activity.datasets import HmsDataset, HmsPredictDataset
 from hms_brain_activity import transforms as t
-from hms_brain_activity.utils import split_annotations_across_patients
+from hms_brain_activity.paths import DATA_PROCESSED_DIR
 
 
-class BasicBlock1d(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int, stride: int = 1):
-        super().__init__()
-        self.conv1 = nn.Conv1d(
-            in_channels=in_channels,
-            out_channels=out_channels,
-            kernel_size=3,
-            stride=stride,
-            padding=1,
-            bias=False,
-        )
-        self.bn1 = nn.BatchNorm1d(num_features=out_channels)
-        self.relu = nn.ReLU()  # Could equivalently use F.relu()
-        self.conv2 = nn.Conv1d(
-            in_channels=out_channels,
-            out_channels=out_channels,
-            kernel_size=3,
-            stride=1,
-            padding=1,
-            bias=False,
-        )
-        self.bn2 = nn.BatchNorm1d(num_features=out_channels)
-
-        if in_channels != out_channels or stride != 1:
-            self.projection_shortcut = nn.Sequential(
-                nn.Conv1d(
-                    in_channels=in_channels,
-                    out_channels=out_channels,
-                    kernel_size=1,
-                    stride=stride,
-                ),
-                nn.BatchNorm1d(num_features=out_channels),
-            )
-        else:
-            self.projection_shortcut = lambda x: x
-
+class AggregateSpectrograms(nn.Module):
     def forward(self, x):
-        identity = self.projection_shortcut(x)
-        x = self.relu(self.bn1(self.conv1(x)))
-        x = self.bn2(self.conv2(x))
-        x += identity
-        x = self.relu(x)
-        return x
+        out = [
+            torch.nanmean(x[:, sl, :, :], dim=1, keepdim=True)
+            for sl in [
+                slice(0, 4),
+                slice(4, 8),
+                slice(8, 12),
+                slice(12, 16),
+                slice(16, 18),
+            ]
+        ]
+        return torch.cat(out, dim=1)
 
 
-class ResNet1d34Backbone(nn.Sequential):
-    channels = (64, 128, 256, 512)
-
-    def __init__(self, in_channels: int):
-        super().__init__()
-
-        # Layer 1
-        conv1 = OrderedDict(
-            conv1=nn.Conv1d(
-                in_channels=in_channels,
-                out_channels=self.channels[0],
-                kernel_size=7,
-                stride=2,
-                padding=0,
-                bias=False,
-            ),
-            bn=nn.BatchNorm1d(num_features=self.channels[0]),
-            relu=nn.ReLU(),
-        )
-        self.conv1 = nn.Sequential(conv1)
-
-        # Layer 2
-        in_channels2 = self.channels[0]
-        conv2 = OrderedDict(
-            mp=nn.MaxPool1d(kernel_size=3, stride=2, padding=0),
-            conv2_1=BasicBlock1d(self.channels[0], self.channels[0], stride=1),
-            conv2_2=BasicBlock1d(in_channels2, self.channels[0], stride=1),
-            conv2_3=BasicBlock1d(in_channels2, self.channels[0], stride=1),
-        )
-        self.conv2 = nn.Sequential(conv2)
-
-        # Layer 3
-        in_channels3 = self.channels[1]
-        conv3 = OrderedDict(
-            conv3_1=BasicBlock1d(in_channels2, self.channels[1], stride=2),
-            conv3_2=BasicBlock1d(in_channels3, self.channels[1], stride=1),
-            conv3_3=BasicBlock1d(in_channels3, self.channels[1], stride=1),
-            conv3_4=BasicBlock1d(in_channels3, self.channels[1], stride=1),
-        )
-        self.conv3 = nn.Sequential(conv3)
-
-        # Layer 4
-        in_channels4 = self.channels[2]
-        conv4 = OrderedDict(
-            conv4_1=BasicBlock1d(in_channels3, self.channels[2], stride=2),
-            conv4_2=BasicBlock1d(in_channels4, self.channels[2], stride=1),
-            conv4_3=BasicBlock1d(in_channels4, self.channels[2], stride=1),
-            conv4_4=BasicBlock1d(in_channels4, self.channels[2], stride=1),
-            conv4_5=BasicBlock1d(in_channels4, self.channels[2], stride=1),
-            conv4_6=BasicBlock1d(in_channels4, self.channels[2], stride=1),
-        )
-        self.conv4 = nn.Sequential(conv4)
-
-        # Layer 5
-        in_channels5 = self.channels[3]
-        conv5 = OrderedDict(
-            conv5_1=BasicBlock1d(in_channels4, self.channels[3], stride=2),
-            conv5_2=BasicBlock1d(in_channels5, self.channels[3], stride=1),
-            conv5_3=BasicBlock1d(in_channels5, self.channels[3], stride=1),
-        )
-        self.conv5 = nn.Sequential(conv5)
-
-        self.init_weights()
-
-    def init_weights(self):
-        self.apply(self._init_weight_bias)
-
-    def _init_weight_bias(self, module):
-        if isinstance(module, (nn.Conv1d, nn.Linear)):
-            nn.init.kaiming_normal_(module.weight)
-            if module.bias is not None:
-                nn.init.constant_(module.bias, 0.01)
-
-
-class ClassificationHead1d(nn.Sequential):
-    def __init__(self, num_channels, num_classes):
-        super().__init__()
-        self.num_channels = num_channels
-        self.num_classes = num_classes
-
-        self.avg_pool = nn.AdaptiveAvgPool1d(1)
-        self.fc = nn.Conv1d(num_channels, num_classes, 1)
-
-
-# %%
-
-# inverted_residual_setting = [
-#     FusedMBConvConfig(1, 3, 1, 24, 24, 2),
-#     FusedMBConvConfig(4, 3, 2, 24, 48, 4),
-#     FusedMBConvConfig(4, 3, 2, 48, 64, 4),
-#     MBConvConfig(4, 3, 2, 64, 128, 6),
-#     MBConvConfig(6, 3, 1, 128, 160, 9),
-#     MBConvConfig(6, 3, 2, 160, 256, 15),
-# ]
-# last_channel = 1280
-
-# EfficientNet(
-#     inverted_residual_setting,
-#     dropout,
-#     last_channel=last_channel,
-#     norm_layer=partial(nn.BatchNorm2d, eps=1e-03),
-#     **kwargs,
-# )
-
-# Conv2dNormActivation(
-#     3,
-#     firstconv_output_channels,
-#     kernel_size=3,
-#     stride=2,
-#     norm_layer=norm_layer,
-#     activation_layer=nn.SiLU,
-# )
-
-class MBConv(nn.Module):
-    def adjust_channels()
-    def __init__(
-        self,
-        cnf: MBConvConfig,
-        stochastic_depth_prob: float,
-        norm_layer: Callable[..., nn.Module],
-        se_layer: Callable[..., nn.Module] = SqueezeExcitation,
-    ) -> None:
-        super().__init__()
-
-        self.use_res_connect = cnf.stride == 1 and cnf.input_channels == cnf.out_channels
-
-        layers: List[nn.Module] = []
-        activation_layer = nn.SiLU
-
-        # expand
-        expanded_channels = cnf.adjust_channels(cnf.input_channels, cnf.expand_ratio)
-        if expanded_channels != cnf.input_channels:
-            layers.append(
-                Conv2dNormActivation(
-                    cnf.input_channels,
-                    expanded_channels,
-                    kernel_size=1,
-                    norm_layer=norm_layer,
-                    activation_layer=activation_layer,
-                )
-            )
-
-        # depthwise
-        layers.append(
-            Conv2dNormActivation(
-                expanded_channels,
-                expanded_channels,
-                kernel_size=cnf.kernel,
-                stride=cnf.stride,
-                groups=expanded_channels,
-                norm_layer=norm_layer,
-                activation_layer=activation_layer,
-            )
-        )
-
-        # squeeze and excitation
-        squeeze_channels = max(1, cnf.input_channels // 4)
-        layers.append(se_layer(expanded_channels, squeeze_channels, activation=partial(nn.SiLU, inplace=True)))
-
-        # project
-        layers.append(
-            Conv2dNormActivation(
-                expanded_channels, cnf.out_channels, kernel_size=1, norm_layer=norm_layer, activation_layer=None
-            )
-        )
-
-        self.block = nn.Sequential(*layers)
-        self.stochastic_depth = StochasticDepth(stochastic_depth_prob, "row")
-        self.out_channels = cnf.out_channels
-
-    def forward(self, input: Tensor) -> Tensor:
-        result = self.block(input)
-        if self.use_res_connect:
-            result = self.stochastic_depth(result)
-            result += input
-        return result
-
-
-class Conv2dNormAct(nn.Sequential):
-    def __init__(self, in_channels, out_channels, kernel_size, norm_cls=None, act_cls=None, **conv_kwargs):
-        super().__init__()
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, **conv_kwargs)
-        if not conv_kwargs.get("bias") is None:
-            conv_kwargs["bias"] = norm_cls is None
-
-        if norm_cls is not None:
-            self.bn = norm_cls(out_channels)
-        if act_cls is not None:
-            self.act = act_cls()
-
-
-
-class EfficientNetV2sBackbone(nn.Sequential):
-    channels = (24, 24, 48, 64, 128, 160, 256)
-
-    def __init__(self, in_channels: int):
-        super().__init__(self)
-        self.in_channels = in_channels
-
-        # Layer 0: conv 3x3 s2
-        self.layer0 = Conv2dNormAct(
-            in_channels,
-            out_channels=self.channels[0],
-            kernel_size=3,
-            stride=2,
-            norm_cls=nn.BatchNorm2d,
-            act_cls=nn.SiLU,
-            padding=0,
-            bias=False,
-        )
-
-        # Layer 1: fused-mbconv1 3x3 s1
-        layer1 =
-        # Layer 2: fused-mbconv1 3x3 s2
-        # Layer 3: fused-mbconv4 3x3 s2
-
-        # Layer 4: mbconv4 3x3 s2
-        # Layer 5: mbconv4 3x3 s1
-        # Layer 6: mbconv4 3x3 s2
-
-        self.init_weights()
-
-    def init_weights(self):
-        self.apply(self._init_weight_bias)
-
-    def _init_weight_bias(self, module):
-        if isinstance(module, nn.Conv2d):
-            nn.init.kaiming_normal_(module.weight)
-            if module.bias is not None:
-                nn.init.constant_(module.bias, 0.01)
-        elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
-            nn.init.ones_(m.weight)
-            nn.init.zeros_(m.bias)
-        elif isinstance(m, nn.Linear):
-            init_range = 1.0 / math.sqrt(m.out_features)
-            nn.init.uniform_(m.weight, -init_range, init_range)
-            nn.init.zeros_(m.bias)
-
-    ...
-
-
-# %%
+class AsymmetricSpectrograms(nn.Module):
+    def forward(self, x):
+        out = [x]
+        for i, j in [
+            (1, 2),
+            (3, 4),
+        ]:
+            res = (x[:, j, ...] / (x[:, i, ...] + x[:, j, ...]) * 100) - 50
+            out.append(res.unsqueeze(1))
+        return torch.cat(out, dim=1)
 
 
 def model_config(hparams):
     num_channels = 19
     num_classes = 6
+
+    # Create Network
+    net = efficientnet_v2_s(num_classes=num_classes)
+
+    # Replace first convolution
+    _conv0_prev = net.features[0][0]
+    _conv0 = nn.Conv2d(
+        num_channels,
+        _conv0_prev.out_channels,
+        _conv0_prev.kernel_size,
+        stride=_conv0_prev.stride,
+        padding=_conv0_prev.padding,
+        bias=_conv0_prev.bias,
+    )
+    _conv0.weight = nn.init.kaiming_normal_(_conv0.weight, mode="fan_out")
+    net.features[0][0] = _conv0
+
     return nn.Sequential(
-        ResNet1d34Backbone(num_channels),
-        ClassificationHead1d(ResNet1d34Backbone.channels[-1], num_classes),
+        Spectrogram(
+            int(hparams['config']["sample_rate"]),
+            hop_length=int(hparams['config']["sample_rate"]),
+            center=False,
+            power=2,
+        ),
+        AggregateSpectrograms(),
+        AsymmetricSpectrograms(),
+        net,
         nn.LogSoftmax(dim=1),
     )
 
 
 def transforms(hparams):
     return [
-        t.FillNanNpArray(0),
-        t.PadNpArray(
-            t.BandPassNpArray(
-                hparams["config"]["bandpass_low"],
-                hparams["config"]["bandpass_high"],
-                hparams["config"]["sample_rate"],
-            ),
-            padlen=hparams["config"]["sample_rate"],
+        *[
+            t.TransformIterable(transform, apply_to=["EEG"])
+            for transform in [
+                t.Pad(padlen=hparams["config"]["sample_rate"]),
+                t.BandPassNpArray(
+                    hparams["config"]["bandpass_low"],
+                    hparams["config"]["bandpass_high"],
+                    hparams["config"]["sample_rate"],
+                ),
+                t.Unpad(padlen=hparams["config"]["sample_rate"]),
+                t.Scale(1 / (35 * 1.5)),
+                t.DoubleBananaMontageNpArray(),
+            ]
+        ],
+        t.TransformIterable(
+            t.Scale(1 / 1e4),
+            apply_to=["ECG"],
         ),
-        t.ScaleEEG(1 / (35 * 1.5)),
-        t.ScaleECG(1 / 1e4),
+        t.JoinArrays(),
         t.TanhClipNpArray(4),
-        t.DoubleBananaMontageNpArray(),
         t.ToTensor(),
     ]
 
@@ -339,7 +108,7 @@ def transforms(hparams):
 def train_config(hparams):
     module = TrainModule(
         model_config(hparams),
-        loss_function=nn.KLDivLoss(reduction="batchmean", log_target=True),
+        loss_function=nn.KLDivLoss(reduction="batchmean"),
         metrics={
             "mse": MeanSquaredError(),
         },
@@ -357,37 +126,29 @@ def train_config(hparams):
         },
     )
 
-    annotations = pd.read_csv("./data/hms/train.csv")
-
-    train_annotations, val_annotations = split_annotations_across_patients(
-        annotations,
-        test_size=0.2,
-        random_state=0,
-    )
-
     data_dir = "./data/hms/train_eegs"
 
-    train_dataset = HmsClassificationDataset(
+    train_dataset = HmsDataset(
         data_dir=data_dir,
-        annotations=train_annotations,
-        transform=Compose(
-            [
+        annotations=pd.read_csv(DATA_PROCESSED_DIR / "train.csv"),
+        augmentation=t.TransformCompose(
+            t.TransformIterable(
                 t.RandomSaggitalFlipNpArray(),
-                t.RandomScale(),
-                *transforms(hparams),
-                t.VotesToProbabilities(),
-            ]
+                apply_to=["EEG"]
+            )
+        ),
+        transform=t.TransformCompose(
+            *transforms(hparams),
+            t.VotesToProbabilities(),
         ),
     )
 
-    val_dataset = HmsClassificationDataset(
+    val_dataset = HmsDataset(
         data_dir=data_dir,
-        annotations=val_annotations,
-        transform=Compose(
-            [
-                *transforms(hparams),
-                t.VotesToProbabilities(),
-            ],
+        annotations=pd.read_csv(DATA_PROCESSED_DIR / "val.csv"),
+        transform=t.TransformCompose(
+            *transforms(hparams),
+            t.VotesToProbabilities(),
         ),
     )
 
@@ -446,7 +207,7 @@ def predict_config(hparams):
     annotations = pd.DataFrame(
         {"eeg_id": [fp.stem for fp in data_dir.glob("*.parquet")]}
     )
-    predict_dataset = HmsClassificationDataset(
+    predict_dataset = HmsPredictDataset(
         data_dir=data_dir,
         annotations=annotations,
         transform=Compose(transforms(hparams)),
@@ -461,3 +222,4 @@ def predict_config(hparams):
             shuffle=False,
         ),
     )
+
