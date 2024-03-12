@@ -46,7 +46,7 @@ class AsymmetricSpectrograms(nn.Module):
 
 
 def model_config(hparams):
-    num_channels = 19
+    num_channels = 7
     num_classes = 6
 
     # Create Network
