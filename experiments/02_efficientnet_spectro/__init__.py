@@ -44,7 +44,8 @@ class AggregateSpectrograms(nn.Module):
                 slice(4, 8),
                 slice(8, 12),
                 slice(12, 16),
-                slice(16, 18),
+                slice(16, 18),  # Sagittal plane EEG
+                slice(18, 19),  # ECG
             ]
         ]
         return torch.cat(out, dim=1)
