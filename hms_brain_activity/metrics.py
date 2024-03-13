@@ -21,6 +21,9 @@ class MetricWrapper(Metric):
     def compute(self):
         return self.metric.compute()
 
+    def plot(self):
+        return self.metric.plot()
+
 
 class _BaseProbabilityPlotMetric(Metric):
     def __init__(
@@ -45,8 +48,6 @@ class _BaseProbabilityPlotMetric(Metric):
         pass
 
     def plot(self) -> go.Figure:
-        yaxis_title="Probability"
-
         num_labels = len(self.class_names)
         num_bins = self.histogram.shape[-1]
         fig = make_subplots(rows=1, cols=num_labels * 2, horizontal_spacing=0.001, shared_yaxes=True)
@@ -104,7 +105,7 @@ class _BaseProbabilityPlotMetric(Metric):
                 )
             )
         fig.update_xaxes(visible=False)
-        fig.update_layout(yaxis_title=yaxis_title)
+        fig.update_layout(yaxis_title="Probability")
         for trace in fig["data"][3:] + fig["data"][1:2]:
             trace["showlegend"] = False
         return fig
@@ -163,3 +164,6 @@ class MeanProbability(Metric):
             out[class_name] = result[i, 0]
             out[f"{class_name}_true"] = result[i, 1]
         return out
+
+    def plot(self):
+        pass

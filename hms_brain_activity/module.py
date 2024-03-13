@@ -8,6 +8,7 @@ from matplotlib import pyplot as plt
 from torch import nn
 from torch.optim import Optimizer, lr_scheduler
 from torchmetrics import Metric, MeanMetric
+from plotly import graph_objects as go
 
 try:
     from clearml import Logger
@@ -141,22 +142,16 @@ class TrainModule(pl.LightningModule):
             and (clearml_logger := Logger.current_logger()) is not None
         ):
             plot = metric.plot()
-            if isinstance(plot, tuple):
-                fig, _ax = plot
-                clearml_logger.report_matplotlib_figure(
-                    f"{name} ({stage})",
-                    stage,
-                    iteration=self.current_epoch,
-                    figure=fig,
-                )
-                plt.close(fig)
-            else:
+            if isinstance(plot, go.Figure):
                 clearml_logger.report_plotly(
                     f"{name} ({stage})",
                     stage,
                     iteration=self.current_epoch,
-                    figure=metric.plot(),
+                    figure=plot,
                 )
+            else:
+	        fig, _ax = plot
+                plt.close(fig)
 
     def get_stage(self) -> str:
         return self.trainer.state.stage.value
