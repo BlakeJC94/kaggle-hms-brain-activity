@@ -33,7 +33,7 @@ class _BaseProbabilityPlotMetric(Metric):
 
         self.n_classes = len(class_names)
         self.n_bins = n_bins
-        self.class_names = self.class_names
+        self.class_names = class_names
 
         self.add_state(
             "histogram",
