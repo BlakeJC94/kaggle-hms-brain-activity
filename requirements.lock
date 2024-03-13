@@ -132,6 +132,8 @@ pandas==2.2.1
 pillow==10.2.0
     # via matplotlib
     # via torchvision
+pip==24.0
+    # via hms-brain-activity
 platformdirs==4.2.0
     # via pooch
 plotly==5.19.0
