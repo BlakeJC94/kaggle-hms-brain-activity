@@ -324,8 +324,8 @@ class Scale(_BaseTransform, abc.ABC):
         if not isinstance(self.scalar, dict):
             x = x * self.scalar
         else:
-            for k, v in self.scalar.keys():
-                x[k] = x[k] * self.scalar
+            for k in self.scalar.keys():
+                x[k] = x[k] * self.scalar[k]
         return x, md
 
 
