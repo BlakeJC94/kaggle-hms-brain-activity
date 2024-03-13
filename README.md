@@ -67,7 +67,7 @@ And once it's all configured and active, navigate to the project directory and c
 $ rye sync
 ```
 
-To launch a training job:
+To launch a training job (after setting up ClearML):
 ```bash
 $ rye run ipython -- tasks/train.py <path/to/hparams.py> [--dev-run] [--offline] [--debug]
 ```
