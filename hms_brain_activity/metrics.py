@@ -143,7 +143,7 @@ class MeanProbability(Metric):
 
         self.add_state(
             "probabilities",
-            default=torch.zeros(len(self.class_names), 2),
+            default=torch.zeros(len(self.class_names)),
             dist_reduce_fx="sum",
         )
         self.add_state(
@@ -152,17 +152,15 @@ class MeanProbability(Metric):
             dist_reduce_fx="sum",
         )
 
-    def update(self, y_pred, y):
-        self.probabilities[:, 0] += y_pred.sum(0)
-        self.probabilities[:, 1] += y.sum(0)
+    def update(self, y_pred, _):
+        self.probabilities += y_pred.sum(0)
         self.n_samples += y_pred.shape[0]
 
     def compute(self):
         result = self.probabilities / self.n_samples
         out = {}
         for i, class_name in enumerate(self.class_names):
-            out[class_name] = result[i, 0]
-            out[f"{class_name}_true"] = result[i, 1]
+            out[class_name] = result[i]
         return out
 
     def plot(self):
