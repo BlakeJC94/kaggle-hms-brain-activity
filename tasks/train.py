@@ -10,7 +10,7 @@ from clearml import Task
 from hms_brain_activity import logger
 from hms_brain_activity.paths import ARTIFACTS_DIR
 from hms_brain_activity.loggers import ClearMlLogger
-from hms_brain_activity.callbacks import EpochProgress
+from hms_brain_activity.callbacks import EpochProgress, NanMonitor
 from hms_brain_activity.paths import get_task_dir_name
 from hms_brain_activity.utils import import_script_as_module, print_dict
 
@@ -22,7 +22,7 @@ def main() -> str:
 def parse() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("hparams_path")
-    parser.add_argument("-d", "--dev-run", action="store_true", default=False)
+    parser.add_argument("-d", "--dev-run", type=float, default=-1.0)
     parser.add_argument("-D", "--pdb", action="store_true", default=False)
     parser.add_argument("-o", "--offline", action="store_true", default=False)
     return parser.parse_args()
@@ -74,6 +74,7 @@ def train(
     # Initialise callbacks
     callbacks = [
         EpochProgress(),
+        NanMonitor(),
         pl.callbacks.LearningRateMonitor(),
         *config.get("callbacks", []),
     ]
@@ -131,7 +132,7 @@ def get_hparams_and_config_path(
 ) -> Tuple[Dict[str, Any], str]:
     hparams = import_script_as_module(hparams_path).hparams
     if dev_run:
-        hparams = set_hparams_debug_overrides(hparams)
+        hparams = set_hparams_debug_overrides(hparams, dev_run)
 
     config_path = hparams["config"].get(
         "path",
@@ -140,7 +141,7 @@ def get_hparams_and_config_path(
     return hparams, config_path
 
 
-def set_hparams_debug_overrides(hparams):
+def set_hparams_debug_overrides(hparams, dev_run):
     """"""
     # Task overrides
     hparams["task"]["init"]["project_name"] = "test"
@@ -149,8 +150,8 @@ def set_hparams_debug_overrides(hparams):
     # Config overrides
     hparams["config"]["num_workers"] = 0
     # Trainer overrides
-    hparams["trainer"]["init"]["overfit_batches"] = 1
     hparams["trainer"]["init"]["log_every_n_steps"] = 1
+    hparams["trainer"]["init"]["overfit_batches"] = dev_run if dev_run > 0 else 1
     return hparams
 
 
