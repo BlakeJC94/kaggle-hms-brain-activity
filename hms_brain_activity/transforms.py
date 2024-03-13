@@ -6,7 +6,6 @@ import torch
 import numpy as np
 from torch import nn
 from scipy import signal
-from torchvision.transforms.v2 import Compose
 
 from hms_brain_activity.globals import CHANNEL_NAMES
 from hms_brain_activity.utils import saggital_flip_channel
@@ -40,10 +39,11 @@ class TransformCompose(_BaseTransform):
     def __init__(self, *transforms):
         super().__init__()
         self.transforms = transforms
-        self.transform = Compose(transforms)
 
     def compute(self, x, md):
-        return self.transform(x, md)
+        for transform in self.transforms:
+            x, md = transform(x, md)
+        return x, md
 
     def __len__(self):
         return len(self.transforms)
@@ -51,7 +51,7 @@ class TransformCompose(_BaseTransform):
     def __getitem__(self, i):
         foo = self.transform.transforms[i]
         if isinstance(foo, list):
-            return Compose(foo)
+            return TransformCompose(*foo)
         return foo
 
 
