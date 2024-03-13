@@ -197,6 +197,8 @@ pillow==10.2.0
     # via clearml
     # via matplotlib
     # via torchvision
+pip==24.0
+    # via hms-brain-activity
 platformdirs==4.2.0
     # via black
     # via pooch
