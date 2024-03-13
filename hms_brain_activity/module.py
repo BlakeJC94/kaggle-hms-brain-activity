@@ -109,10 +109,11 @@ class TrainModule(pl.LightningModule):
 
         metrics = getattr(self.metrics, f"{stage}_metrics", {})
         for metric_name, metric in metrics.items():
-            if isinstance(metric, MeanMetric):
-                metric.update(y_pred)
-            else:
-                metric.update(y_pred, y)
+            try:
+	        metric.update(y_pred, y)
+            except Exception as err:
+                logger.error(f"Error when updating metric '{metric_name}': {str(err)}")
+                raise err
             if getattr(metric, "compute_on_batch", True):
                 self._log_metric(metric, metric_name, stage, batch_size=len(y_pred))
 
@@ -125,7 +126,11 @@ class TrainModule(pl.LightningModule):
             metric.reset()
 
     def _log_metric(self, metric, name, stage, batch_size=None, epoch=False):
-        result = metric.compute() if isinstance(metric, Metric) else metric
+        try:
+	    result = metric.compute() if isinstance(metric, Metric) else metric
+        except Exception as err:
+            logger.error(f"Error when computing metric '{name}': {str(err)}")
+            raise err
 
         # Metrics used purely for side-effects (e.g., plotting) can return None and won't be logged
         # If metrics return a dict of results, train/val metrics are separated into different plots
@@ -141,7 +146,11 @@ class TrainModule(pl.LightningModule):
             and (Logger is not None)
             and (clearml_logger := Logger.current_logger()) is not None
         ):
-            plot = metric.plot()
+            try:
+                plot = metric.plot()
+            except Exception as err:
+                logger.error(f"Error when plotting metric '{name}': {str(err)}")
+                raise err
             if isinstance(plot, go.Figure):
                 clearml_logger.report_plotly(
                     f"{name} ({stage})",
