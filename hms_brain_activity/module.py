@@ -110,7 +110,7 @@ class TrainModule(pl.LightningModule):
         metrics = getattr(self.metrics, f"{stage}_metrics", {})
         for metric_name, metric in metrics.items():
             try:
-	        metric.update(y_pred, y)
+                metric.update(y_pred, y)
             except Exception as err:
                 raise ValueError(f"Error when updating metric '{metric_name}': {str(err)}") from err
             if getattr(metric, "compute_on_batch", True):
@@ -126,7 +126,7 @@ class TrainModule(pl.LightningModule):
 
     def _log_metric(self, metric, name, stage, batch_size=None, epoch=False):
         try:
-	    result = metric.compute() if isinstance(metric, Metric) else metric
+            result = metric.compute() if isinstance(metric, Metric) else metric
         except Exception as err:
             raise ValueError(f"Error when computing metric '{name}': {str(err)}") from err
 
@@ -155,8 +155,8 @@ class TrainModule(pl.LightningModule):
                     iteration=self.current_epoch,
                     figure=plot,
                 )
-            else:
-	        fig, _ax = plot
+            elif isinstance(plot, tuple):
+                fig, _ax = plot
                 plt.close(fig)
 
     def get_stage(self) -> str:
