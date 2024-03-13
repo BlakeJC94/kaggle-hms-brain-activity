@@ -10,7 +10,6 @@ from scipy import signal
 from hms_brain_activity.globals import CHANNEL_NAMES
 from hms_brain_activity.utils import saggital_flip_channel
 
-
 class _BaseTransform(nn.Module, abc.ABC):
     @abc.abstractmethod
     def compute(x, md):
@@ -31,7 +30,13 @@ class TransformIterable(_BaseTransform):
 
     def compute(self, x: Iterable, md=None):
         for i in self.apply_to:
-            x[i], md = self.transform(x[i], md)
+            try:
+                x[i], md = self.transform(x[i], md)
+            except Exception as err:
+                name = self.transforms.__class__.__name__
+                raise ValueError(
+                    f"Error when applying transform '{name}' to key '{i}': {str(err)}"
+                ) from err
         return x, md
 
 
@@ -42,7 +47,11 @@ class TransformCompose(_BaseTransform):
 
     def compute(self, x, md):
         for transform in self.transforms:
-            x, md = transform(x, md)
+            try:
+                x, md = transform(x, md)
+            except Exception as err:
+                name = transform.__class__.__name__
+                raise ValueError(f"Error when applying transform '{name}': {str(err)}") from err
         return x, md
 
     def __len__(self):
