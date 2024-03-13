@@ -15,6 +15,7 @@ TODO
 - Heart rate feature
 
 """
+
 import os
 from functools import partial
 from pathlib import Path
@@ -117,7 +118,6 @@ def transforms(hparams):
                     55,
                     hparams["config"]["sample_rate"],
                 ),
-
                 t.NotchNpArray(
                     55,
                     65,
@@ -126,7 +126,7 @@ def transforms(hparams):
                 t.Unpad(padlen=2 * hparams["config"]["sample_rate"]),
             ]
         ],
-        t.Scale({"EEG": 1 / (35*1.5), "ECG": 1/1e4}),
+        t.Scale({"EEG": 1 / (35 * 1.5), "ECG": 1 / 1e4}),
         t.TransformIterable(["EEG"], t.DoubleBananaMontageNpArray()),
         t.JoinArrays(),
         t.TanhClipNpArray(4),
@@ -140,15 +140,15 @@ def metrics(hparams):
         "mean_pred": m.MetricWrapper(
             t.TransformCompose(*output_transforms(hparams)),
             m.MeanProbability(class_names=VOTE_NAMES),
-        )
+        ),
         "prob_distribution": m.MetricWrapper(
             t.TransformCompose(*output_transforms(hparams)),
             m.ProbabilityDistribution(class_names=VOTE_NAMES),
-        )
+        ),
         "prob_density": m.MetricWrapper(
             t.TransformCompose(*output_transforms(hparams)),
             m.ProbabilityDistribution(class_names=VOTE_NAMES),
-        )
+        ),
     }
 
 
