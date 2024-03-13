@@ -15,12 +15,19 @@ class EpochProgress(pl.Callback):
     """Dead simple callback to print a message when an epoch completes (a quieter alternative to the
     progress bar).
     """
+    @staticmethod
+    def num_batches(val):
+        if isinstance(val, list) and len(val) == 1:
+            return val[0]
+        return val
 
     def on_train_start(self, trainer, module):
-        logger.info(f"Starting training with {trainer.num_training_batches} batches")
+        logger.info(
+            f"Starting training with {self.num_batches(trainer.num_training_batches)} batches"
+        )
 
     def on_validation_start(self, trainer, module):
-        logger.info(f"Starting validation with {trainer.num_val_batches} batches")
+        logger.info(f"Starting validation with {self.num_batches(trainer.num_val_batches)} batches")
 
     def on_train_epoch_end(self, trainer, module):
         logger.info(f"Finished epoch {module.current_epoch + 1:04}")

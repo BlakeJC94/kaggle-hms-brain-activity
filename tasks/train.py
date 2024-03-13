@@ -43,7 +43,7 @@ def train(
     if pdb:
         logger.info("PDB")
     if offline:
-        logger.info("PDB")
+        logger.info("OFFLINE")
 
     # Get config from hparams
     hparams, config_path = get_hparams_and_config_path(hparams_path, dev_run)
@@ -53,7 +53,7 @@ def train(
     # Create task name
     task_name = "-".join(Path(hparams_path).parts[-2:]).removesuffix(".py")
     if dev_run:
-        task_name = f"DEV RUN: {task_name}"
+        task_name = f"dev-{task_name}"
 
     # Initialise logger
     clearml_logger = ClearMlLogger(
