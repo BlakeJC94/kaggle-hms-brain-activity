@@ -130,7 +130,7 @@ class ProbabilityDistribution(_BaseProbabilityPlotMetric):
             if hist_idx == 1:
                 mask = ~mask
             self.histogram[class_idx, hist_idx, :] += torch.histc(
-                y_pred[mask, class_idx], self.num_bins, 0, 1
+                y_pred[mask, class_idx], self.n_bins, 0, 1
             )
 
 
