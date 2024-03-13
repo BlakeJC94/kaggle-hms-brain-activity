@@ -13,6 +13,7 @@ hparams = {
     "trainer": {
         "init": {
             "enable_progress_bar": False,
+            "devices": [1],
         },
     },
     "config": {
@@ -21,8 +22,8 @@ hparams = {
         "bandpass_high": 45.0,
         "learning_rate": 3 * 1e-4,
         "weight_decay": 0.01,
-        "num_workers": 12,
-        "batch_size": 128,
+        "num_workers": 10,
+        "batch_size": 256,
         "patience": 20,
         "milestones": [20],
         "gamma": 0.2,
