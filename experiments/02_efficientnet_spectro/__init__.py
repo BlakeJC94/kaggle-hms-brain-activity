@@ -137,8 +137,12 @@ def transforms(hparams):
 def metrics(hparams):
     return {
         "mse": MeanSquaredError(),
-        "mean_pred": m.MetricWrapper(
+        "mean_y_pred": m.MetricWrapper(
             t.TransformCompose(*output_transforms(hparams)),
+            m.MeanProbability(class_names=VOTE_NAMES),
+        ),
+        "mean_y": m.MetricWrapper(
+            lambda y_pred, y: (y, y_pred),
             m.MeanProbability(class_names=VOTE_NAMES),
         ),
         "prob_distribution": m.MetricWrapper(
