@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 import numpy as np
+import torch
 
 from hms_brain_activity.globals import VOTE_NAMES
 
@@ -74,3 +75,44 @@ class SubmissionWriter(pl.callbacks.BasePredictionWriter):
             else dict(mode="a", header=False)
         )
         rows.to_csv(self.output_path, index=False, **opts)
+
+
+class NanMonitor(pl.Callback):
+    """Raise if any Nans are encountered"""
+    def check(self, batch_idx, batch, outputs=None):
+        outputs = outputs or {}
+        to_check = {
+            "x": batch[0],
+            "y": batch[1]["y"],
+            "y_pred": outputs.get("y_pred"),
+            "loss": outputs.get("loss"),
+            "out": outputs.get("out"),
+        }
+        for k, v in to_check.items():
+            if v is None:
+                continue
+            v = torch.isnan(v)
+            if v.ndim > 1:
+                v = v.flatten(1).any(1)
+            if v.any():
+                nan_idxs_str = ""
+                if v.ndim > 0:
+                    nan_idxs = [i for i, b in enumerate(v) if b]
+                    nan_idxs_str = ", ".join([str(idx) for idx in nan_idxs[:5]]))
+                    if len(nan_idxs) > 5:
+                        nan_idxs_str += f", ... [{len(nan_idxs)}]"
+                raise ArithmeticError(
+                    f"Encountered NaN in '{k}' for batch {batch_idx} (samples {nan_idxs_str})"
+                )
+
+    def on_predict_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
+        self.check(batch_idx, batch, outputs)
+
+    def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
+        self.check(batch_idx, batch, outputs)
+    
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
+        self.check(batch_idx, batch, outputs)
+
+    def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
+        self.check(batch_idx, batch, outputs)
