@@ -98,7 +98,7 @@ class NanMonitor(pl.Callback):
                 nan_idxs_str = ""
                 if v.ndim > 0:
                     nan_idxs = [i for i, b in enumerate(v) if b]
-                    nan_idxs_str = ", ".join([str(idx) for idx in nan_idxs[:5]]))
+                    nan_idxs_str = ", ".join([str(idx) for idx in nan_idxs[:5]])
                     if len(nan_idxs) > 5:
                         nan_idxs_str += f", ... [{len(nan_idxs)}]"
                 raise ArithmeticError(
