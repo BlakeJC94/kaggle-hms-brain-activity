@@ -61,6 +61,7 @@ class AsymmetricSpectrograms(nn.Module):
             (3, 4),
         ]:
             res = (x[:, j, ...] / (x[:, i, ...] + x[:, j, ...]) * 100) - 50
+            res = torch.nan_to_num(res, 0)
             out.append(res.unsqueeze(1))
         return torch.cat(out, dim=1)
 
