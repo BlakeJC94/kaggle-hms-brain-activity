@@ -197,6 +197,3 @@ class MeanProbability(Metric):
         for i, class_name in enumerate(self.class_names):
             out[class_name] = result[i]
         return out
-
-    def plot(self):
-        pass
