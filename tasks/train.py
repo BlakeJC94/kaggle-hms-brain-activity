@@ -1,5 +1,5 @@
 import argparse
-import shutil
+import os
 from pathlib import Path
 from typing import Any, Dict, Tuple
 
@@ -10,7 +10,7 @@ from clearml import Task
 from hms_brain_activity import logger
 from hms_brain_activity.paths import ARTIFACTS_DIR
 from hms_brain_activity.loggers import ClearMlLogger
-from hms_brain_activity.callbacks import EpochProgress, NanMonitor
+from hms_brain_activity.callbacks import EpochProgress, NanMonitor, PidMonitor
 from hms_brain_activity.paths import get_task_dir_name
 from hms_brain_activity.utils import import_script_as_module, print_dict
 
@@ -37,6 +37,8 @@ def train(
     """Choo choo"""
     pl.seed_everything(0, workers=True)
     torch.set_float32_matmul_precision("high")
+
+    logger.info(f"Process ID: {os.getpid()}")
 
     if dev_run:
         logger.info("DEV RUN")
@@ -76,6 +78,7 @@ def train(
     callbacks = [
         EpochProgress(),
         NanMonitor(),
+        PidMonitor(),
         pl.callbacks.LearningRateMonitor(),
         *config.get("callbacks", []),
     ]

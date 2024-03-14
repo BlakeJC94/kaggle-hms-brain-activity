@@ -1,4 +1,5 @@
 import logging
+import os
 import pytorch_lightning as pl
 from pathlib import Path
 
@@ -110,9 +111,23 @@ class NanMonitor(pl.Callback):
 
     def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
         self.check(batch_idx, batch, outputs)
-    
+
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
         self.check(batch_idx, batch, outputs)
 
     def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
         self.check(batch_idx, batch, outputs)
+
+
+class PidMonitor(pl.Callback):
+    FILE = Path("./.train.pid")
+
+    def on_fit_start(self, trainer, pl_module):
+        with open(self.FILE, "w") as f:
+            f.write(os.getpid())
+
+    def on_exception(self, trainer, pl_module, exception):
+        if self.FILE.exists():
+            self.FILE.unlink()
+
+
