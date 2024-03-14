@@ -22,7 +22,7 @@ def main() -> str:
 def parse() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("hparams_path")
-    parser.add_argument("-d", "--dev-run", type=float, default=-1.0)
+    parser.add_argument("-d", "--dev-run", type=float, default=0.0)
     parser.add_argument("-D", "--pdb", action="store_true", default=False)
     parser.add_argument("-o", "--offline", action="store_true", default=False)
     return parser.parse_args()
@@ -54,6 +54,7 @@ def train(
     task_name = "-".join(Path(hparams_path).parts[-2:]).removesuffix(".py")
     if dev_run:
         task_name = f"dev-{task_name}"
+    logger.info(f"Task name: {task_name}")
 
     # Initialise logger
     clearml_logger = ClearMlLogger(
