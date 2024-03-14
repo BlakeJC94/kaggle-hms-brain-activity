@@ -146,6 +146,8 @@ class TrainModule(pl.LightningModule):
         ):
             try:
                 plot = metric.plot()
+            except NotImplementedError:
+                plot = None
             except Exception as err:
                 raise ValueError(f"Error when plotting metric '{name}': {str(err)}") from err
             if isinstance(plot, go.Figure):
