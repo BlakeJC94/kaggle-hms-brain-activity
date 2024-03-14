@@ -250,7 +250,7 @@ def output_transforms(hparams):
     ]
 
 
-def predict_config(hparams):
+def predict_config(hparams, weights_path=None):
     module = PredictModule(
         model_config(hparams),
         transform=t.TransformCompose(
@@ -259,9 +259,10 @@ def predict_config(hparams):
         ),
     )
 
-    weights_path = Path(hparams["predict"]["weights_path"])
+    weights_path = weights_path or hparams["predict"]["weights_path"]
+    weights_path = Path(weights_path)
     ckpt = torch.load(weights_path, map_location="cpu")
-    module.load_state_dict(ckpt["state_dict"], strict=False)
+    module.load_state_dict(ckpt["state_dict"])
 
     data_dir = Path(hparams["predict"]["data_dir"])
     annotations = pd.DataFrame(

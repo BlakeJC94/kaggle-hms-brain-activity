@@ -1,8 +1,8 @@
 import argparse
 from pathlib import Path
+from typing import Optional
 
 import pytorch_lightning as pl
-import torch
 
 from hms_brain_activity import logger
 from hms_brain_activity.utils import import_script_as_module, print_dict
@@ -16,10 +16,11 @@ def main() -> str:
 def parse() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("hparams_path")
+    parser.add_argument("weights_path", nargs="?", default=None)
     return parser.parse_args()
 
 
-def predict(hparams_path: str):
+def predict(hparams_path: str, weights_path: Optional[str] = None):
     hparams = import_script_as_module(hparams_path).hparams
     logger.info("hparams =")
     logger.info(print_dict(hparams))
@@ -30,7 +31,7 @@ def predict(hparams_path: str):
     )
     logger.info(f"Using config at '{config_path}'")
     config_fn = import_script_as_module(config_path).predict_config
-    config = config_fn(hparams)
+    config = config_fn(hparams, weights_path)
 
     trainer = pl.Trainer(
         callbacks=[
