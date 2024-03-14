@@ -25,6 +25,35 @@ class MetricWrapper(Metric):
         return self.metric.plot()
 
 
+class PooledMean(Metric):
+    """Base class for converting a standard callable into a pooled mean metric.
+    This class will store results from calls so that the overall mean can be calculated in
+    MapReduce fashion.
+
+    E.g.,
+    First __call__: fn(y_pred, y) -> 10.4, len(y) -> 32
+    Second __call__: fn(y_pred, y) -> 3.4, len(y) -> 24
+    compute: (10.4 * 32 + 3.4 * 24) / (32 + 24)
+
+    Args:
+        metric: A callable that returns a torch scalar metric value. It should have the
+            signature `fn(y_pred: torch.Tensor, y: torch.Tensor) -> torch.Tensor`.
+    """
+
+    def __init__(self, metric: Callable, **kwargs):
+        super().__init__(**kwargs)
+        self.metric = metric
+        self.add_state("value_sum", default=torch.tensor(0.0), dist_reduce_fx="sum")
+        self.add_state("count", default=torch.tensor(0.0), dist_reduce_fx="sum")
+
+    def update(self, preds: torch.Tensor, target: torch.Tensor):
+        self.value_sum = self.value_sum + self.metric(preds, target) * target.shape[0]
+        self.count = self.count + target.shape[0]
+
+    def compute(self) -> torch.Tensor:
+        return self.value_sum / self.count
+
+
 class _BaseProbabilityPlotMetric(Metric):
     def __init__(
         self,
@@ -50,7 +79,9 @@ class _BaseProbabilityPlotMetric(Metric):
     def plot(self) -> go.Figure:
         num_labels = len(self.class_names)
         num_bins = self.histogram.shape[-1]
-        fig = make_subplots(rows=1, cols=num_labels * 2, horizontal_spacing=0.001, shared_yaxes=True)
+        fig = make_subplots(
+            rows=1, cols=num_labels * 2, horizontal_spacing=0.001, shared_yaxes=True
+        )
         for label_id, label_name in enumerate(self.class_names):
             for target_id in range(2):
                 target_name = f"Target = {target_id}"
@@ -70,8 +101,12 @@ class _BaseProbabilityPlotMetric(Metric):
 
                 # Reverse axes and remove tick labels to create back-to-back plots
                 x_max = histogram.max()
-                fig.update_xaxes(range=[x_max, 0] if target_id == 0 else [0, x_max], row=1, col=col)
-                fig.update_yaxes(showticklabels=True if col == 1 else False, row=1, col=col)
+                fig.update_xaxes(
+                    range=[x_max, 0] if target_id == 0 else [0, x_max], row=1, col=col
+                )
+                fig.update_yaxes(
+                    showticklabels=True if col == 1 else False, row=1, col=col
+                )
 
                 # Calculate and plot estimates for Q1, Median and Q3
                 cdf = np.cumsum(histogram)
