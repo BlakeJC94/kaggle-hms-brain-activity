@@ -22,6 +22,7 @@ from pathlib import Path
 
 import pytorch_lightning as pl
 import torch
+import numpy as np
 import pandas as pd
 from torch import nn, optim
 from torch.utils.data import DataLoader
@@ -35,6 +36,30 @@ from hms_brain_activity import transforms as t
 from hms_brain_activity import metrics as m
 from hms_brain_activity.paths import DATA_PROCESSED_DIR
 from hms_brain_activity.globals import VOTE_NAMES
+
+
+class PostProcessSpectrograms(nn.Module):
+    def __init__(self, sample_rate, max_frequency):
+        super().__init__()
+        self.sample_rate = sample_rate
+        self.max_frequency = max_frequency
+
+    def forward(self, x):
+        _num_batches, _num_channels, num_freqs, _num_timesteps = x.shape
+        x = x / self.sample_rate
+
+        # Set near-0 values to a fixed floor to prevent log(tiny value) creating large negative
+        # values that obscure the actual meaningful signal
+        x[x < 1e-10] = 1e-10
+        x = 20 * torch.log(x)
+
+        # Trim unwanted frequencies
+        frequencies = np.linspace(0, self.sample_rate / 2, num_freqs)
+        frequency_mask = frequencies <= self.max_frequency
+        # Leave batch, channel & time dims; slice the frequency dim
+        x = x[:, :, frequency_mask, :]
+
+        return x
 
 
 class AggregateSpectrograms(nn.Module):
@@ -93,6 +118,7 @@ def model_config(hparams):
             center=False,
             power=2,
         ),
+        PostProcessSpectrograms(hparams["config"]["sample_rate"], max_frequency=80),
         AggregateSpectrograms(),
         AsymmetricSpectrograms(),
         net,
