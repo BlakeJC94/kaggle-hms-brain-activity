@@ -146,6 +146,12 @@ def metrics(hparams):
             lambda y_pred, y: (y, y_pred),
             m.MeanProbability(class_names=VOTE_NAMES),
         ),
+        "cross_entropy": m.MetricWrapper(
+            t.TransformCompose(*output_transforms(hparams)),
+            m.PooledMean(
+                nn.CrossEntropyLoss(),
+            )
+        ),
         "prob_distribution": m.MetricWrapper(
             t.TransformCompose(*output_transforms(hparams)),
             m.ProbabilityDistribution(class_names=VOTE_NAMES),
