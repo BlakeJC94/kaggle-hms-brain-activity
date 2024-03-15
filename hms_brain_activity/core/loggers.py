@@ -1,13 +1,10 @@
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Any, Dict
+from typing import Any, Dict
 
-from pytorch_lightning.loggers import TensorBoardLogger
-
-from hms_brain_activity.utils import import_script_as_module
 from hms_brain_activity.paths import get_task_dir_name
-
+from pytorch_lightning.loggers import TensorBoardLogger
 
 try:
     from clearml import Task

@@ -13,7 +13,7 @@ hparams = {
     "trainer": {
         "init": {
             "enable_progress_bar": False,
-            "devices": [1],
+            # "devices": [1],
         },
     },
     "config": {
@@ -29,8 +29,4 @@ hparams = {
         "gamma": 0.2,
         "monitor": "loss/validate",
     },
-    "predict": {
-        "weights_path": "./01_best.ckpt",
-        "data_dir": "./data/hms/test_eegs",
-    }
 }

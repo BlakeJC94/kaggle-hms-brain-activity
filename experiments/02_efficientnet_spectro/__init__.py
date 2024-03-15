@@ -20,22 +20,23 @@ import os
 from functools import partial
 from pathlib import Path
 
-import pytorch_lightning as pl
-import torch
 import numpy as np
 import pandas as pd
+import pytorch_lightning as pl
+import torch
+from hms_brain_activity import metrics as m
+from hms_brain_activity import transforms as t
+from hms_brain_activity.core.modules import PredictModule, TrainModule
+from hms_brain_activity.core.transforms import (TransformCompose,
+                                                TransformIterable)
+from hms_brain_activity.datasets import HmsDataset, PredictHmsDataset
+from hms_brain_activity.globals import VOTE_NAMES
+from hms_brain_activity.paths import DATA_PROCESSED_DIR
 from torch import nn, optim
 from torch.utils.data import DataLoader
+from torchaudio.transforms import Spectrogram
 from torchmetrics import MeanSquaredError
 from torchvision.models.efficientnet import efficientnet_v2_s
-from torchaudio.transforms import Spectrogram
-
-from hms_brain_activity.module import TrainModule, PredictModule
-from hms_brain_activity.datasets import HmsDataset, PredictHmsDataset
-from hms_brain_activity import transforms as t
-from hms_brain_activity import metrics as m
-from hms_brain_activity.paths import DATA_PROCESSED_DIR
-from hms_brain_activity.globals import VOTE_NAMES
 
 
 class PostProcessSpectrograms(nn.Module):
@@ -129,7 +130,7 @@ def model_config(hparams):
 def transforms(hparams):
     return [
         *[
-            t.TransformIterable(["EEG"], transform)
+            TransformIterable(["EEG"], transform)
             for transform in [
                 t.Pad(padlen=2 * hparams["config"]["sample_rate"]),
                 t.HighPassNpArray(
@@ -154,7 +155,7 @@ def transforms(hparams):
             ]
         ],
         t.Scale({"EEG": 1 / (35 * 1.5), "ECG": 1 / 1e4}),
-        t.TransformIterable(["EEG"], t.DoubleBananaMontageNpArray()),
+        TransformIterable(["EEG"], t.DoubleBananaMontageNpArray()),
         t.JoinArrays(),
         t.TanhClipNpArray(4),
         t.ToTensor(),
@@ -165,7 +166,7 @@ def metrics(hparams):
     return {
         "mse": MeanSquaredError(),
         "mean_y_pred": m.MetricWrapper(
-            t.TransformCompose(*output_transforms(hparams)),
+            TransformCompose(*output_transforms(hparams)),
             m.MeanProbability(class_names=VOTE_NAMES),
         ),
         "mean_y": m.MetricWrapper(
@@ -173,17 +174,17 @@ def metrics(hparams):
             m.MeanProbability(class_names=VOTE_NAMES),
         ),
         "cross_entropy": m.MetricWrapper(
-            t.TransformCompose(*output_transforms(hparams)),
+            TransformCompose(*output_transforms(hparams)),
             m.PooledMean(
                 nn.CrossEntropyLoss(),
-            )
+            ),
         ),
         "prob_distribution": m.MetricWrapper(
-            t.TransformCompose(*output_transforms(hparams)),
+            TransformCompose(*output_transforms(hparams)),
             m.ProbabilityDistribution(class_names=VOTE_NAMES),
         ),
         "prob_density": m.MetricWrapper(
-            t.TransformCompose(*output_transforms(hparams)),
+            TransformCompose(*output_transforms(hparams)),
             m.ProbabilityDistribution(class_names=VOTE_NAMES),
         ),
     }
@@ -217,10 +218,10 @@ def train_config(hparams):
     train_dataset = HmsDataset(
         data_dir=data_dir,
         annotations=pd.read_csv(DATA_PROCESSED_DIR / "train.csv"),
-        augmentation=t.TransformCompose(
-            t.TransformIterable(["EEG"], t.RandomSaggitalFlipNpArray())
+        augmentation=TransformCompose(
+            TransformIterable(["EEG"], t.RandomSaggitalFlipNpArray())
         ),
-        transform=t.TransformCompose(
+        transform=TransformCompose(
             *transforms(hparams),
             t.VotesToProbabilities(),
         ),
@@ -229,7 +230,7 @@ def train_config(hparams):
     val_dataset = HmsDataset(
         data_dir=data_dir,
         annotations=pd.read_csv(DATA_PROCESSED_DIR / "val.csv"),
-        transform=t.TransformCompose(
+        transform=TransformCompose(
             *transforms(hparams),
             t.VotesToProbabilities(),
         ),
@@ -276,10 +277,10 @@ def output_transforms(hparams):
     ]
 
 
-def predict_config(hparams, weights_path=None):
+def predict_config(hparams, weights_path, dataset_args):
     module = PredictModule(
         model_config(hparams),
-        transform=t.TransformCompose(
+        transform=TransformCompose(
             *output_transforms(hparams),
             lambda y_pred, md: (y_pred.cpu().numpy(), md),
         ),
@@ -290,10 +291,10 @@ def predict_config(hparams, weights_path=None):
     ckpt = torch.load(weights_path, map_location="cpu")
     module.load_state_dict(ckpt["state_dict"])
 
-    data_dir = Path(hparams["predict"]["data_dir"])
+    data_dir = Path(dataset_args[0]).expanduser()
     predict_dataset = PredictHmsDataset(
         data_dir=data_dir,
-        transform=t.TransformCompose(*transforms(hparams)),
+        transform=TransformCompose(*transforms(hparams)),
     )
 
     return dict(

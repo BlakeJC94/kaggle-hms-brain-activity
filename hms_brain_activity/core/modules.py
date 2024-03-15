@@ -1,14 +1,14 @@
 from copy import deepcopy
-from typing import Callable, Optional, TypeAlias, Dict, List, Any
+from typing import Any, Callable, Dict, Optional, TypeAlias
 
+import matplotlib
 import pytorch_lightning as pl
 import torch
-import matplotlib
 from matplotlib import pyplot as plt
+from plotly import graph_objects as go
 from torch import nn
 from torch.optim import Optimizer, lr_scheduler
-from torchmetrics import Metric, MeanMetric
-from plotly import graph_objects as go
+from torchmetrics import Metric
 
 try:
     from clearml import Logger
@@ -112,7 +112,9 @@ class TrainModule(pl.LightningModule):
             try:
                 metric.update(y_pred, y)
             except Exception as err:
-                raise ValueError(f"Error when updating metric '{metric_name}': {str(err)}") from err
+                raise ValueError(
+                    f"Error when updating metric '{metric_name}': {str(err)}"
+                ) from err
             if getattr(metric, "compute_on_batch", True):
                 self._log_metric(metric, metric_name, stage, batch_size=len(y_pred))
 
@@ -128,7 +130,9 @@ class TrainModule(pl.LightningModule):
         try:
             result = metric.compute() if isinstance(metric, Metric) else metric
         except Exception as err:
-            raise ValueError(f"Error when computing metric '{name}': {str(err)}") from err
+            raise ValueError(
+                f"Error when computing metric '{name}': {str(err)}"
+            ) from err
 
         # Metrics used purely for side-effects (e.g., plotting) can return None and won't be logged
         # If metrics return a dict of results, train/val metrics are separated into different plots
@@ -149,7 +153,9 @@ class TrainModule(pl.LightningModule):
             except NotImplementedError:
                 plot = None
             except Exception as err:
-                raise ValueError(f"Error when plotting metric '{name}': {str(err)}") from err
+                raise ValueError(
+                    f"Error when plotting metric '{name}': {str(err)}"
+                ) from err
             if isinstance(plot, go.Figure):
                 clearml_logger.report_plotly(
                     f"{name} ({stage})",
