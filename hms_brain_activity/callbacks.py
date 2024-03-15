@@ -1,14 +1,13 @@
 import logging
 import os
-import pytorch_lightning as pl
 from pathlib import Path
 
-import pandas as pd
 import numpy as np
+import pandas as pd
+import pytorch_lightning as pl
 import torch
 
 from hms_brain_activity.globals import VOTE_NAMES
-
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +16,7 @@ class EpochProgress(pl.Callback):
     """Dead simple callback to print a message when an epoch completes (a quieter alternative to the
     progress bar).
     """
+
     @staticmethod
     def num_batches(val):
         if isinstance(val, list) and len(val) == 1:
@@ -29,7 +29,9 @@ class EpochProgress(pl.Callback):
         )
 
     def on_validation_start(self, trainer, module):
-        logger.info(f"Starting validation with {self.num_batches(trainer.num_val_batches)} batches")
+        logger.info(
+            f"Starting validation with {self.num_batches(trainer.num_val_batches)} batches"
+        )
 
     def on_train_epoch_end(self, trainer, module):
         logger.info(f"Finished epoch {module.current_epoch + 1:04}")
@@ -80,6 +82,7 @@ class SubmissionWriter(pl.callbacks.BasePredictionWriter):
 
 class NanMonitor(pl.Callback):
     """Raise if any Nans are encountered"""
+
     def check(self, batch_idx, batch, outputs=None):
         outputs = outputs or {}
         to_check = {
@@ -106,28 +109,53 @@ class NanMonitor(pl.Callback):
                     f"Encountered NaN in '{k}' for batch {batch_idx} (samples {nan_idxs_str})"
                 )
 
-    def on_predict_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
+    def on_predict_batch_end(
+        self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0
+    ):
         self.check(batch_idx, batch, outputs)
 
-    def on_test_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
+    def on_test_batch_end(
+        self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0
+    ):
         self.check(batch_idx, batch, outputs)
 
-    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
+    def on_train_batch_end(
+        self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0
+    ):
         self.check(batch_idx, batch, outputs)
 
-    def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0):
+    def on_validation_batch_end(
+        self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx=0
+    ):
         self.check(batch_idx, batch, outputs)
 
 
 class PidMonitor(pl.Callback):
-    FILE = Path("./.train.pid")
+    FILENAME = "./.train.{i}.pid"
+
+    def __init__(self):
+        super().__init__()
+
+        globpat = self.FILENAME.split("/")[-1].replace("{i}", "*")
+        max_pid_i = max(
+            [
+                0,
+                *[
+                    int(fp.suffixes[0].removeprefix("."))
+                    for fp in Path(".").glob(globpat)
+                ],
+            ]
+        )
+        self.filename = Path(self.FILENAME.format(i=max_pid_i + 1))
 
     def on_fit_start(self, trainer, pl_module):
-        with open(self.FILE, "w") as f:
+        with open(self.filename, "w") as f:
             f.write(os.getpid())
 
+    def on_fit_end(self, trainer, pl_module):
+        if self.filename.exists():
+            self.filename.unlink()
+
     def on_exception(self, trainer, pl_module, exception):
-        if self.FILE.exists():
-            self.FILE.unlink()
-
-
+        if self.filename.exists():
+            self.filename.unlink()

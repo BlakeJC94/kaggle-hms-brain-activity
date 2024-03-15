@@ -25,7 +25,7 @@ The structure of this repo is laid out as:
 ```
 .
 ├── artifacts    # Git-ignored dir for experiment outputs
-├── data         # Links and dirs for raw/processed data 
+├── data         # Links and dirs for raw/processed data
 ├── dataset_builders  # Scripts for processing data
 ├── experiments       # Directory for experiment configs/hyperparams
 ├── hms_brain_activity  # Core ML project code
@@ -46,7 +46,7 @@ experiments/
 │   └── __init__.py     # Configuration written as functions of hparams dictionaries
 ├── 01_resnet1d34
 │   ├── baseline.py
-│   ├── decrease_lr.py  # Hyperparmeter names appended to experiment name in clearml 
+│   ├── decrease_lr.py  # Hyperparmeter names appended to experiment name in clearml
 │   └── __init__.py
 └── 02_efficientnet_spectro
     ├── baseline.py
@@ -69,10 +69,30 @@ $ rye sync
 
 To launch a training job (after setting up ClearML):
 ```bash
-$ rye run ipython -- tasks/train.py <path/to/hparams.py> [--dev-run] [--offline] [--debug]
+$ rye run ipython -- tasks/train.py <path/to/hparams.py> [--dev-run <frac or -1>] [--offline] [--debug]
 ```
 
-To lauch an inference job:
+Launching a training job will create a temporary file `./.train.X.pid` which contains the PID of the
+running training job. To terminate the job, send an INT signal to that PID (or use `tasks/stop.py`):
 ```bash
-$ rye run ipython -- tasks/predict.py <path/to/hparams.py>
+$ rye run ipython -- tasks/stop.py <.train.XX.pid>
+```
+
+To launch an inference job:
+```bash
+$ rye run ipython -- tasks/predict.py <path/to/hparams.py> <path/to/weights.ckpt>
+```
+
+To create a zip file to submit,
+```bash
+$ rye run ipython -- tasks/create_submission.py <path/to/hparams.py> <path/to/weights.ckpt>
+```
+
+This will create a minimal zip file with the code required to perform inference and a small `run.py` script. To use the output:
+```bash
+$ unzip submission_XXXX.zip
+$ mkdir data
+$ ln -s <path/to/hms/dataset> data/hms
+$ rye sync
+$ rye run ipython -- run.py
 ```
