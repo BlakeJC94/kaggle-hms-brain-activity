@@ -138,10 +138,7 @@ def get_hparams_and_config_path(
     if dev_run:
         hparams = set_hparams_debug_overrides(hparams, dev_run)
 
-    config_path = hparams["config"].get(
-        "path",
-        str(Path(hparams_path).parent / "__init__.py"),
-    )
+    config_path = str(Path(hparams_path).parent / "__init__.py"
     return hparams, config_path
 
 
