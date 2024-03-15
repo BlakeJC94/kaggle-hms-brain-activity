@@ -14,6 +14,8 @@ from hms_brain_activity.callbacks import EpochProgress, NanMonitor, PidMonitor
 from hms_brain_activity.paths import get_task_dir_name
 from hms_brain_activity.utils import import_script_as_module, print_dict
 
+logger = logger.getChild(__name__)
+
 
 def main() -> str:
     return train(**vars(parse()))
