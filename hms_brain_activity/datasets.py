@@ -207,6 +207,7 @@ class HmsDataset(BaseDataset, HmsReaderMixin):
         annotation = self.annotations.iloc[i]
         return {
             "patient_id": annotation.get("patient_id", "None"),
+            "eeg_id": annotation.get("eeg_id", "None"),
         }
 
     def get_data(self, eeg_path: str | Path, start: int = 0, duration: int = 50 * 200):
@@ -225,9 +226,6 @@ class PredictHmsDataset(HmsDataset):
         self.annotations = pd.DataFrame(
             {"eeg_id": [fp.stem for fp in data_dir.glob("*.parquet")]}
         )
-
-    def __len__(self):
-        return len(self.filepaths)
 
     def get_raw_label(self, i: int) -> Any:
         return None
