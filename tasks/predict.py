@@ -25,11 +25,9 @@ def predict(hparams_path: str, weights_path: Optional[str] = None):
     logger.info("hparams =")
     logger.info(print_dict(hparams))
 
-    config_path = hparams["config"].get(
-        "path",
-        str(Path(hparams_path).parent / "__init__.py"),
-    )
+    config_path = Path(hparams_path).parent / "__init__.py"
     logger.info(f"Using config at '{config_path}'")
+    logger.info(f"Using weights at '{weights_path}'")
     config_fn = import_script_as_module(config_path).predict_config
     config = config_fn(hparams, weights_path)
 
