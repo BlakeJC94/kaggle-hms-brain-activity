@@ -31,7 +31,7 @@ from torchvision.models.efficientnet import efficientnet_v2_s
 from torchaudio.transforms import Spectrogram
 
 from hms_brain_activity.module import TrainModule, PredictModule
-from hms_brain_activity.datasets import HmsDataset, HmsPredictDataset
+from hms_brain_activity.datasets import HmsDataset, PredictHmsDataset
 from hms_brain_activity import transforms as t
 from hms_brain_activity import metrics as m
 from hms_brain_activity.paths import DATA_PROCESSED_DIR
@@ -291,12 +291,8 @@ def predict_config(hparams, weights_path=None):
     module.load_state_dict(ckpt["state_dict"])
 
     data_dir = Path(hparams["predict"]["data_dir"])
-    annotations = pd.DataFrame(
-        {"eeg_id": [fp.stem for fp in data_dir.glob("*.parquet")]}
-    )
-    predict_dataset = HmsPredictDataset(
+    predict_dataset = PredictHmsDataset(
         data_dir=data_dir,
-        annotations=annotations,
         transform=t.TransformCompose(*transforms(hparams)),
     )
 
