@@ -11,8 +11,8 @@ from dash import dcc, html, Dash
 from dash.dependencies import Input, Output
 from plotly import graph_objects as go
 
-from hms_brain_activity.datasets import BaseDataset
-from hms_brain_activity.transforms import TransformIterable, TransformCompose
+from hms_brain_activity.core.datasets import BaseDataset
+from hms_brain_activity.core.transforms import TransformIterable, TransformCompose
 
 TabularData: TypeAlias = Union[pd.DataFrame, np.ndarray]
 Control: TypeAlias = Union[dbc.Label, html.Div, dcc.Slider]

@@ -2,7 +2,6 @@ import logging
 import os
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
 import torch
@@ -159,3 +158,4 @@ class PidMonitor(pl.Callback):
     def on_exception(self, trainer, pl_module, exception):
         if self.filename.exists():
             self.filename.unlink()
+

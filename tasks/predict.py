@@ -1,12 +1,12 @@
 import argparse
 from pathlib import Path
-from typing import Optional
+from typing import List
 
 import pytorch_lightning as pl
 
 from hms_brain_activity import logger
-from hms_brain_activity.utils import import_script_as_module, print_dict
-from hms_brain_activity.callbacks import SubmissionWriter
+from hms_brain_activity.core.utils import import_script_as_module, print_dict
+from hms_brain_activity.core.callbacks import SubmissionWriter
 
 logger = logger.getChild(__name__)
 
@@ -18,11 +18,12 @@ def main() -> str:
 def parse() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("hparams_path")
-    parser.add_argument("weights_path", nargs="?", default=None)
+    parser.add_argument("weights_path")
+    parser.add_argument("dataset_args", nargs="*")
     return parser.parse_args()
 
 
-def predict(hparams_path: str, weights_path: Optional[str] = None):
+def predict(hparams_path: str, weights_path: str, dataset_args: List[str]):
     hparams = import_script_as_module(hparams_path).hparams
     logger.info("hparams =")
     logger.info(print_dict(hparams))
@@ -30,12 +31,13 @@ def predict(hparams_path: str, weights_path: Optional[str] = None):
     config_path = Path(hparams_path).parent / "__init__.py"
     logger.info(f"Using config at '{config_path}'")
     logger.info(f"Using weights at '{weights_path}'")
+    logger.info(f"Using dataset args: {dataset_args}")
     config_fn = import_script_as_module(config_path).predict_config
-    config = config_fn(hparams, weights_path)
+    config = config_fn(hparams, weights_path, dataset_args)
 
     trainer = pl.Trainer(
         callbacks=[
-            SubmissionWriter(hparams["predict"].get("output_dir", "./")),
+            SubmissionWriter("./"),
         ]
     )
     trainer.predict(

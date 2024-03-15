@@ -1,6 +1,6 @@
 import abc
 import random
-from typing import List, Tuple, Literal, Any, Iterable, Callable
+from typing import List, Tuple, Literal
 
 import torch
 import numpy as np
@@ -8,60 +8,7 @@ from torch import nn
 from scipy import signal
 
 from hms_brain_activity.globals import CHANNEL_NAMES
-from hms_brain_activity.utils import saggital_flip_channel
-
-class _BaseTransform(nn.Module, abc.ABC):
-    @abc.abstractmethod
-    def compute(x, md):
-        return x, md
-
-    def forward(self, x, md=None):
-        x, md = self.compute(x, md)
-        if md is None:
-            return x
-        return x, md
-
-
-class TransformIterable(_BaseTransform):
-    def __init__(self, apply_to: List[Any], transform: Callable):
-        super().__init__()
-        self.transform = transform
-        self.apply_to = apply_to
-
-    def compute(self, x: Iterable, md=None):
-        for i in self.apply_to:
-            try:
-                x[i], md = self.transform(x[i], md)
-            except Exception as err:
-                name = self.transform.__class__.__name__
-                raise ValueError(
-                    f"Error when applying transform '{name}' to key '{i}': {str(err)}"
-                ) from err
-        return x, md
-
-
-class TransformCompose(_BaseTransform):
-    def __init__(self, *transforms):
-        super().__init__()
-        self.transforms = transforms
-
-    def compute(self, x, md):
-        for transform in self.transforms:
-            try:
-                x, md = transform(x, md)
-            except Exception as err:
-                name = transform.__class__.__name__
-                raise ValueError(f"Error when applying transform '{name}': {str(err)}") from err
-        return x, md
-
-    def __len__(self):
-        return len(self.transforms)
-
-    def __getitem__(self, i):
-        foo = self.transform.transforms[i]
-        if isinstance(foo, list):
-            return TransformCompose(*foo)
-        return foo
+from hms_brain_activity.core.transforms import _BaseTransform
 
 
 class FillNanNpArray(_BaseTransform):
@@ -415,7 +362,18 @@ class DoubleBananaMontageNpArray(_BaseMontageNpArray):
 
 
 class RandomSaggitalFlipNpArray(_BaseMontageNpArray):
-    montage = [(saggital_flip_channel(ch), "") for ch in CHANNEL_NAMES[:-1]]
+    def __init__(self):
+        self.montage = [(self.saggital_flip_channel(ch), "") for ch in CHANNEL_NAMES[:-1]]
+        super().__init__()
+
+    @staticmethod
+    def saggital_flip_channel(ch: str) -> str:
+        if ch == "EKG" or ch[-1] == "z":
+            return ch
+        pos = "".join([c for c in ch if not c.isnumeric()])
+        digit = int("".join([c for c in ch if c.isnumeric()]))
+        translation = -1 if digit % 2 == 0 else 1
+        return "".join([pos, str(digit + translation)])
 
     def compute(self, x, md):
         if random.random() < 0.5:

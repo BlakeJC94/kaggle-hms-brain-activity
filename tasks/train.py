@@ -9,10 +9,10 @@ from clearml import Task
 
 from hms_brain_activity import logger
 from hms_brain_activity.paths import ARTIFACTS_DIR
-from hms_brain_activity.loggers import ClearMlLogger
-from hms_brain_activity.callbacks import EpochProgress, NanMonitor, PidMonitor
+from hms_brain_activity.core.loggers import ClearMlLogger
+from hms_brain_activity.core.callbacks import EpochProgress, NanMonitor, PidMonitor
 from hms_brain_activity.paths import get_task_dir_name
-from hms_brain_activity.utils import import_script_as_module, print_dict
+from hms_brain_activity.core.utils import import_script_as_module, print_dict
 
 logger = logger.getChild(__name__)
 
@@ -24,7 +24,7 @@ def main() -> str:
 def parse() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("hparams_path")
-    parser.add_argument("-d", "--dev-run", type=float, default=0.0)
+    parser.add_argument("-d", "--dev-run", type=float, default=0.0, help="Overfit batches (float as as fraction of batches, negative integer for one batch)")
     parser.add_argument("-D", "--pdb", action="store_true", default=False)
     parser.add_argument("-o", "--offline", action="store_true", default=False)
     return parser.parse_args()
@@ -140,7 +140,7 @@ def get_hparams_and_config_path(
     if dev_run:
         hparams = set_hparams_debug_overrides(hparams, dev_run)
 
-    config_path = str(Path(hparams_path).parent / "__init__.py"
+    config_path = Path(hparams_path).parent / "__init__.py"
     return hparams, config_path
 
 
