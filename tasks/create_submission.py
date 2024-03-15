@@ -8,6 +8,8 @@ import git
 
 from hms_brain_activity import logger
 
+logger = logger.getChild(__name__)
+
 
 CODE_DIRS = [
     "hms_brain_activity/",
@@ -16,6 +18,7 @@ CODE_DIRS = [
 
 MD_FILES = [
     "pyproject.toml",
+    ".python-version",
     "requirements.lock",
     "requirements-dev.lock",
     "README.md",
@@ -49,25 +52,16 @@ def create_submission(hparams_path: str, weights_path: Optional[str] = None):
     if has_unstaged_changes:
         patch = repo.git.execute(["git", "diff", "--", *CODE_DIRS, *MD_FILES])
 
-    run_script_template_lines = [
-        "# Created: {dt_created}",
-        "# Branch name: {branch_name}",
-        "# Commit SHA: {commit_sha}",
-        "# Unstaged changes: {has_unstaged_changes}",
-        "",
-        "from tasks.predict import predict",
-        "",
-        "predict({hparams_dest}, {weights_dest})",
-    ]
-    run_script_template = "\n".join(run_script_template_lines)
-    run_script_template = run_script_template.format(
-        dt_created=dt.isoformat(),
-        branch_name=branch_name,
-        commit_sha=commit_sha,
-        has_unstaged_changes=has_unstaged_changes,
+    run_script_template = create_run_script_template(
+        dt,
+        branch_name,
+        commit_sha,
+        has_unstaged_changes,
     )
 
     with zipfile.ZipFile(zip_name, "w") as zf:
+        add_config_to_zip(zf, hparams_path, weights_path, run_script_template)
+
         for md_file in MD_FILES:
             md_fp = Path(md_file)
             logger.info(f"Adding file '{md_fp}'.")
@@ -84,9 +78,38 @@ def create_submission(hparams_path: str, weights_path: Optional[str] = None):
         if patch:
             patch_fp = Path("unstaged_changes.patch")
             logger.info(f"Creating and adding '{patch_fp}'.")
-            zf.writestr(patch_fp, patch)
+            zf.writestr(str(patch_fp), patch)
 
-        add_config_to_zip(zf, hparams_path, weights_path, run_script_template)
+    logger.info("Done!")
+
+def create_run_script_template(
+        dt,
+        branch_name,
+        commit_sha,
+        has_unstaged_changes,
+):
+    run_script_header_template_lines = [
+        "# Created: {dt_created}",
+        "# Branch name: {branch_name}",
+        "# Commit SHA: {commit_sha}",
+        "# Unstaged changes: {has_unstaged_changes}",
+        "",
+    ]
+    run_script_header_template = "\n".join(run_script_header_template_lines)
+    run_script_header_template = run_script_header_template.format(
+        dt_created=dt.isoformat(),
+        branch_name=branch_name,
+        commit_sha=commit_sha,
+        has_unstaged_changes=has_unstaged_changes,
+    )
+    run_script_template_lines = [
+        run_script_header_template,
+        "from tasks.predict import predict",
+        "",
+        "predict({hparams_dest}, {weights_dest})",
+    ]
+    run_script_template = "\n".join(run_script_template_lines)
+    return run_script_template
 
 
 def add_config_to_zip(zf, hparams_path, weights_path, run_script_template):
@@ -113,7 +136,7 @@ def add_config_to_zip(zf, hparams_path, weights_path, run_script_template):
     )
     run_fp = Path("run.py")
     logger.info(f"Creating and adding '{run_fp}'.")
-    zf.writestr(run_fp, run_script)
+    zf.writestr(str(run_fp), run_script)
 
 
 if __name__ == "__main__":
