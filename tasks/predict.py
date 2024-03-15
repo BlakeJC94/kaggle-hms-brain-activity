@@ -8,6 +8,8 @@ from hms_brain_activity import logger
 from hms_brain_activity.utils import import_script_as_module, print_dict
 from hms_brain_activity.callbacks import SubmissionWriter
 
+logger = logger.getChild(__name__)
+
 
 def main() -> str:
     return predict(**vars(parse()))
