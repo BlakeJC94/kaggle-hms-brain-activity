@@ -33,7 +33,7 @@ class TransformIterable(_BaseTransform):
             try:
                 x[i], md = self.transform(x[i], md)
             except Exception as err:
-                name = self.transforms.__class__.__name__
+                name = self.transform.__class__.__name__
                 raise ValueError(
                     f"Error when applying transform '{name}' to key '{i}': {str(err)}"
                 ) from err
