@@ -3,16 +3,24 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional, Union, List, Tuple, Callable, TypeAlias
 from warnings import warn
 
-import dash
-import dash_bootstrap_components as dbc
 import numpy as np
 import pandas as pd
-from dash import dcc, html, Dash
-from dash.dependencies import Input, Output
 from plotly import graph_objects as go
 
 from hms_brain_activity.core.datasets import BaseDataset
 from hms_brain_activity.core.transforms import TransformIterable, TransformCompose
+
+try:
+    import dash
+    import dash_bootstrap_components as dbc
+    from dash import dcc, html, Dash
+    from dash.dependencies import Input, Output
+except ImportError:
+    dash = None
+    dbc = None
+    dcc, html, Dash = None, None, None
+    Input, Output = None, None
+
 
 TabularData: TypeAlias = Union[pd.DataFrame, np.ndarray]
 Control: TypeAlias = Union[dbc.Label, html.Div, dcc.Slider]
