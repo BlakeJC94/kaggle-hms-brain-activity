@@ -1,11 +1,12 @@
 import logging
-import psutil
 import os
 from pathlib import Path
 
 import pandas as pd
+import psutil
 import pytorch_lightning as pl
 import torch
+
 from src.hms_brain_activity.globals import VOTE_NAMES
 
 logger = logging.getLogger(__name__)

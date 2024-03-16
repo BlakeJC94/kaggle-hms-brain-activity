@@ -1,11 +1,11 @@
 from itertools import product
 from typing import Callable, List
 
-import torch
 import numpy as np
-from torchmetrics import Metric
+import torch
 from plotly import graph_objects as go
 from plotly.subplots import make_subplots
+from torchmetrics import Metric
 
 
 class MetricWrapper(Metric):

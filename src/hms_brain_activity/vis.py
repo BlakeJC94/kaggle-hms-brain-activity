@@ -1,6 +1,6 @@
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Union, List, Tuple, Callable, TypeAlias
+from typing import Any, Callable, Dict, List, Optional, Tuple, TypeAlias, Union
 from warnings import warn
 
 import numpy as np
@@ -8,12 +8,12 @@ import pandas as pd
 from plotly import graph_objects as go
 
 from src.hms_brain_activity.core.datasets import BaseDataset
-from src.hms_brain_activity.core.transforms import TransformIterable, TransformCompose
+from src.hms_brain_activity.core.transforms import TransformCompose, TransformIterable
 
 try:
     import dash
     import dash_bootstrap_components as dbc
-    from dash import dcc, html, Dash
+    from dash import Dash, dcc, html
     from dash.dependencies import Input, Output
 except ImportError:
     dash = None
