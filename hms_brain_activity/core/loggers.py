@@ -1,4 +1,5 @@
 import logging
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict
@@ -57,9 +58,22 @@ class ClearMlLogger(TensorBoardLogger):
     @staticmethod
     def setup_task(hparams, config_path, task_name) -> Task:
         project_name = hparams["task"]["init"]["project_name"]
-        existing_task = Task.get_task(project_name=project_name, task_name=task_name)
-        if existing_task is not None and existing_task.status == "in_progress":
-            raise FileExistsError(f"Task '{project_name}/{task_name}' is in progress.")
+        task_base_name, task_stem_name = task_name.split("-", 1)
+        for k, v in {
+            "project name": project_name,
+            "task base name": task_base_name,
+            "task stem name": task_stem_name,
+        }.items():
+            if "-" in v:
+                raise ValueError(f"The character '-' is forbidden in the {k} ('{v}')")
+
+        # Increment version of task
+        max_task_v = max(
+            Task.get_tasks(project_name=project_name, task_name="^02_efficientnet_spectro-baseline-v")
+            default=-1,
+            key=lambda t: int(re.search(r'v(\d+)', t.name.split("-",2)[-1]) or "-1"),
+        )
+        task_name = "-".join([task_name, str(max_task_v + 1)])
 
         # Start ClearML
         task_init_kwargs = hparams.get("task", {}).get("init", {})
