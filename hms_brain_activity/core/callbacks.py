@@ -142,7 +142,7 @@ class PidMonitor(pl.Callback):
             if pid in running_pids:
                 fp.unlink()
 
-        max_pid_i = max(Path(".").glob(globpat), default=0, key=lambda fp: int(fp.suffixes[0].removeprefix(".")))
+        max_pid_i = max(Path(".").glob(globpat), default=-1, key=lambda fp: int(fp.suffixes[0].removeprefix(".")))
         self.filename = Path(self.FILENAME.format(i=max_pid_i + 1))
 
     def on_fit_start(self, trainer, pl_module):
