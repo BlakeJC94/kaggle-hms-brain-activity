@@ -18,22 +18,20 @@ def main() -> str:
 def parse() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("hparams_path")
-    parser.add_argument("weights_path")
-    parser.add_argument("dataset_args", nargs="*")
+    parser.add_argument("predict_args", nargs="*")
     return parser.parse_args()
 
 
-def predict(hparams_path: str, weights_path: str, dataset_args: List[str]):
+def predict(hparams_path: str, predict_args: List[str]):
     hparams = import_script_as_module(hparams_path).hparams
     logger.info("hparams =")
     logger.info(print_dict(hparams))
 
     config_path = Path(hparams_path).parent / "__init__.py"
     logger.info(f"Using config at '{config_path}'")
-    logger.info(f"Using weights at '{weights_path}'")
-    logger.info(f"Using dataset args: {dataset_args}")
+    logger.info(f"Using predict args: {predict_args}")
     config_fn = import_script_as_module(config_path).predict_config
-    config = config_fn(hparams, weights_path, dataset_args)
+    config = config_fn(hparams, predict_args)
 
     trainer = pl.Trainer(
         callbacks=[

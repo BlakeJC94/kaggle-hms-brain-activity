@@ -2,10 +2,9 @@ import argparse
 import zipfile
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import List
 
 import git
-
 from hms_brain_activity import logger
 
 logger = logger.getChild(__name__)
@@ -35,11 +34,13 @@ def main() -> str:
 def parse() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("hparams_path")
-    parser.add_argument("weights_path", nargs="?", default=None)
+    parser.add_argument("predict_args", nargs="*")
     return parser.parse_args()
 
 
-def create_submission(hparams_path: str, weights_path: Optional[str] = None):
+def create_submission(hparams_path: str, predict_args: List[str]):
+    weights_path, *_ = predict_args
+
     dt = datetime.now()
     repo = git.Repo(".")
     commit_sha, branch_name = repo.rev_parse("HEAD").name_rev.split(" ", 1)
@@ -82,11 +83,12 @@ def create_submission(hparams_path: str, weights_path: Optional[str] = None):
 
     logger.info("Done!")
 
+
 def create_run_script_template(
-        dt,
-        branch_name,
-        commit_sha,
-        has_unstaged_changes,
+    dt,
+    branch_name,
+    commit_sha,
+    has_unstaged_changes,
 ):
     run_script_header_template_lines = [
         "# Created: {dt_created}",
@@ -104,9 +106,14 @@ def create_run_script_template(
     )
     run_script_template_lines = [
         run_script_header_template,
+        "import argparse",
         "from tasks.predict import predict",
         "",
-        "predict({hparams_dest}, {weights_dest})",
+        "parser = argparse.ArgumentParser()",
+        "parser.add_argument('predict_args', nargs='*')",
+        "",
+        "predict_args = parser.parse_args().predict_args",
+        "predict({hparams_dest}, [{weights_dest}, *predict_args])",
     ]
     run_script_template = "\n".join(run_script_template_lines)
     return run_script_template
