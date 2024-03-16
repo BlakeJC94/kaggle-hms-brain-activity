@@ -363,7 +363,9 @@ class DoubleBananaMontageNpArray(_BaseMontageNpArray):
 
 class RandomSaggitalFlipNpArray(_BaseMontageNpArray):
     def __init__(self):
-        self.montage = [(self.saggital_flip_channel(ch), "") for ch in CHANNEL_NAMES[:-1]]
+        self.montage = [
+            (self.saggital_flip_channel(ch), "") for ch in CHANNEL_NAMES[:-1]
+        ]
         super().__init__()
 
     @staticmethod
