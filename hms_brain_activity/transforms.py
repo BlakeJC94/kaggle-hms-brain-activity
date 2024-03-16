@@ -1,16 +1,14 @@
 import abc
 import random
-from typing import List, Tuple, Literal, Any, Optional, Iterable
+from typing import List, Tuple, Literal, Any, Iterable, Callable
 
 import torch
 import numpy as np
 from torch import nn
 from scipy import signal
-from torchvision.transforms.v2 import Compose
 
 from hms_brain_activity.globals import CHANNEL_NAMES
 from hms_brain_activity.utils import saggital_flip_channel
-
 
 class _BaseTransform(nn.Module, abc.ABC):
     @abc.abstractmethod
@@ -25,14 +23,20 @@ class _BaseTransform(nn.Module, abc.ABC):
 
 
 class TransformIterable(_BaseTransform):
-    def __init__(self, transform, apply_to: List[Any]):
+    def __init__(self, apply_to: List[Any], transform: Callable):
         super().__init__()
         self.transform = transform
         self.apply_to = apply_to
 
     def compute(self, x: Iterable, md=None):
         for i in self.apply_to:
-            x[i], md = self.transform(x[i], md)
+            try:
+                x[i], md = self.transform(x[i], md)
+            except Exception as err:
+                name = self.transform.__class__.__name__
+                raise ValueError(
+                    f"Error when applying transform '{name}' to key '{i}': {str(err)}"
+                ) from err
         return x, md
 
 
@@ -40,10 +44,15 @@ class TransformCompose(_BaseTransform):
     def __init__(self, *transforms):
         super().__init__()
         self.transforms = transforms
-        self.transform = Compose(transforms)
 
     def compute(self, x, md):
-        return self.transform(x, md)
+        for transform in self.transforms:
+            try:
+                x, md = transform(x, md)
+            except Exception as err:
+                name = transform.__class__.__name__
+                raise ValueError(f"Error when applying transform '{name}': {str(err)}") from err
+        return x, md
 
     def __len__(self):
         return len(self.transforms)
@@ -51,7 +60,7 @@ class TransformCompose(_BaseTransform):
     def __getitem__(self, i):
         foo = self.transform.transforms[i]
         if isinstance(foo, list):
-            return Compose(foo)
+            return TransformCompose(*foo)
         return foo
 
 
@@ -234,7 +243,7 @@ class _BaseFilterNpArray(_BaseTransform, abc.ABC):
         cutoffs: int | List[int],
         sample_rate: float,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        return signal.butter(
+        return signal.bessel(
             order, cutoffs, btype=self.btype, output="sos", fs=sample_rate
         )
 
@@ -299,7 +308,7 @@ class ToTensor(_BaseTransform):
 class VotesToProbabilities(_BaseTransform):
     def compute(self, x, md):
         y = md["y"]
-        y = y / y.sum(axis=0).unsqueeze(0)
+        y = y / y.sum(axis=0, keepdim=True)
         y = y.squeeze(-1)
         md["y"] = y
         return x, md
@@ -321,7 +330,11 @@ class Scale(_BaseTransform, abc.ABC):
         self.scalar = scalar
 
     def compute(self, x, md):
-        x = x * self.scalar
+        if not isinstance(self.scalar, dict):
+            x = x * self.scalar
+        else:
+            for k in self.scalar.keys():
+                x[k] = x[k] * self.scalar[k]
         return x, md
 
 
