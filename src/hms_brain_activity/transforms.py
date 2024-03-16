@@ -1,14 +1,14 @@
 import abc
 import random
-from typing import List, Tuple, Literal
+from typing import List, Literal, Tuple
 
-import torch
 import numpy as np
-from torch import nn
+import torch
 from scipy import signal
+from torch import nn
 
-from src.hms_brain_activity.globals import CHANNEL_NAMES
 from src.hms_brain_activity.core.transforms import _BaseTransform
+from src.hms_brain_activity.globals import CHANNEL_NAMES
 
 
 class FillNanNpArray(_BaseTransform):
