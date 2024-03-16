@@ -54,10 +54,10 @@ class TransformCompose(_BaseTransform):
         return len(self.transforms)
 
     def __getitem__(self, i):
-        foo = self.transform.transforms[i]
-        if isinstance(foo, list):
-            return TransformCompose(*foo)
-        return foo
+        transforms = self.transforms[i]
+        if isinstance(transforms, (tuple, list)):
+            return TransformCompose(*transforms)
+        return transforms
 
 
 class DataTransform(_BaseTransform):
