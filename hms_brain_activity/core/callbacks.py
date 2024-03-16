@@ -1,11 +1,11 @@
 import logging
+import psutil
 import os
 from pathlib import Path
 
 import pandas as pd
 import pytorch_lightning as pl
 import torch
-
 from hms_brain_activity.globals import VOTE_NAMES
 
 logger = logging.getLogger(__name__)
@@ -134,17 +134,15 @@ class PidMonitor(pl.Callback):
 
     def __init__(self):
         super().__init__()
+        running_pids = psutil.pids()
 
         globpat = self.FILENAME.split("/")[-1].replace("{i}", "*")
-        max_pid_i = max(
-            [
-                0,
-                *[
-                    int(fp.suffixes[0].removeprefix("."))
-                    for fp in Path(".").glob(globpat)
-                ],
-            ]
-        )
+        for fp in Path(".").glob(globpat):
+            pid = int(fp.read_text())
+            if pid in running_pids:
+                fp.unlink()
+
+        max_pid_i = max(Path(".").glob(globpat), default=0, key=lambda fp: int(fp.suffixes[0].removeprefix(".")))
         self.filename = Path(self.FILENAME.format(i=max_pid_i + 1))
 
     def on_fit_start(self, trainer, pl_module):
