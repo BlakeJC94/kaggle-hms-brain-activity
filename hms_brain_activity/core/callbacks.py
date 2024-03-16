@@ -149,7 +149,7 @@ class PidMonitor(pl.Callback):
 
     def on_fit_start(self, trainer, pl_module):
         with open(self.filename, "w") as f:
-            f.write(os.getpid())
+            f.write(str(os.getpid()))
 
     def on_fit_end(self, trainer, pl_module):
         if self.filename.exists():
