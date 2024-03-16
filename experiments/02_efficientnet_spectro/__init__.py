@@ -1,21 +1,65 @@
+"""Apply efficientnet_v2_s to aggregated spectrograms of EEG.
+
+- Augment EEGs with random saggital flip
+- Filter and scale EEG
+- Double Banana montage
+- Scale ECG
+- Tanh clip values
+- Compute spectrograms
+- Average across electrode groups
+- Append asymmetric spectrograms across sagittal plane
+
+TODO
+- Multi-taper spectrogram
+- Better filtering
+- Heart rate feature
+
+"""
+
 import os
 from functools import partial
 from pathlib import Path
 
 import pytorch_lightning as pl
 import torch
+import numpy as np
 import pandas as pd
 from torch import nn, optim
 from torch.utils.data import DataLoader
 from torchmetrics import MeanSquaredError
-from torchvision.transforms.v2 import Compose
 from torchvision.models.efficientnet import efficientnet_v2_s
 from torchaudio.transforms import Spectrogram
 
 from hms_brain_activity.module import TrainModule, PredictModule
-from hms_brain_activity.datasets import HmsDataset, HmsPredictDataset
+from hms_brain_activity.datasets import HmsDataset, PredictHmsDataset
 from hms_brain_activity import transforms as t
+from hms_brain_activity import metrics as m
 from hms_brain_activity.paths import DATA_PROCESSED_DIR
+from hms_brain_activity.globals import VOTE_NAMES
+
+
+class PostProcessSpectrograms(nn.Module):
+    def __init__(self, sample_rate, max_frequency):
+        super().__init__()
+        self.sample_rate = sample_rate
+        self.max_frequency = max_frequency
+
+    def forward(self, x):
+        _num_batches, _num_channels, num_freqs, _num_timesteps = x.shape
+        x = x / self.sample_rate
+
+        # Set near-0 values to a fixed floor to prevent log(tiny value) creating large negative
+        # values that obscure the actual meaningful signal
+        x[x < 1e-10] = 1e-10
+        x = 20 * torch.log(x)
+
+        # Trim unwanted frequencies
+        frequencies = np.linspace(0, self.sample_rate / 2, num_freqs)
+        frequency_mask = frequencies <= self.max_frequency
+        # Leave batch, channel & time dims; slice the frequency dim
+        x = x[:, :, frequency_mask, :]
+
+        return x
 
 
 class AggregateSpectrograms(nn.Module):
@@ -27,7 +71,8 @@ class AggregateSpectrograms(nn.Module):
                 slice(4, 8),
                 slice(8, 12),
                 slice(12, 16),
-                slice(16, 18),
+                slice(16, 18),  # Sagittal plane EEG
+                slice(18, 19),  # ECG
             ]
         ]
         return torch.cat(out, dim=1)
@@ -41,21 +86,22 @@ class AsymmetricSpectrograms(nn.Module):
             (3, 4),
         ]:
             res = (x[:, j, ...] / (x[:, i, ...] + x[:, j, ...]) * 100) - 50
+            res = torch.nan_to_num(res, 0)
             out.append(res.unsqueeze(1))
         return torch.cat(out, dim=1)
 
 
 def model_config(hparams):
-    num_channels = 7
-    num_classes = 6
+    n_channels = 8
+    n_classes = len(VOTE_NAMES)
 
     # Create Network
-    net = efficientnet_v2_s(num_classes=num_classes)
+    net = efficientnet_v2_s(num_classes=n_classes)
 
     # Replace first convolution
     _conv0_prev = net.features[0][0]
     _conv0 = nn.Conv2d(
-        num_channels,
+        n_channels,
         _conv0_prev.out_channels,
         _conv0_prev.kernel_size,
         stride=_conv0_prev.stride,
@@ -67,11 +113,12 @@ def model_config(hparams):
 
     return nn.Sequential(
         Spectrogram(
-            int(hparams['config']["sample_rate"]),
-            hop_length=int(hparams['config']["sample_rate"]),
+            int(hparams["config"]["sample_rate"]),
+            hop_length=int(hparams["config"]["sample_rate"]),
             center=False,
             power=2,
         ),
+        PostProcessSpectrograms(hparams["config"]["sample_rate"], max_frequency=80),
         AggregateSpectrograms(),
         AsymmetricSpectrograms(),
         net,
@@ -82,48 +129,87 @@ def model_config(hparams):
 def transforms(hparams):
     return [
         *[
-            t.TransformIterable(transform, apply_to=["EEG"])
+            t.TransformIterable(["EEG"], transform)
             for transform in [
-                t.Pad(padlen=hparams["config"]["sample_rate"]),
-                t.BandPassNpArray(
+                t.Pad(padlen=2 * hparams["config"]["sample_rate"]),
+                t.HighPassNpArray(
                     hparams["config"]["bandpass_low"],
+                    hparams["config"]["sample_rate"],
+                ),
+                t.LowPassNpArray(
                     hparams["config"]["bandpass_high"],
                     hparams["config"]["sample_rate"],
                 ),
-                t.Unpad(padlen=hparams["config"]["sample_rate"]),
-                t.Scale(1 / (35 * 1.5)),
-                t.DoubleBananaMontageNpArray(),
+                t.NotchNpArray(
+                    45,
+                    55,
+                    hparams["config"]["sample_rate"],
+                ),
+                t.NotchNpArray(
+                    55,
+                    65,
+                    hparams["config"]["sample_rate"],
+                ),
+                t.Unpad(padlen=2 * hparams["config"]["sample_rate"]),
             ]
         ],
-        t.TransformIterable(
-            t.Scale(1 / 1e4),
-            apply_to=["ECG"],
-        ),
+        t.Scale({"EEG": 1 / (35 * 1.5), "ECG": 1 / 1e4}),
+        t.TransformIterable(["EEG"], t.DoubleBananaMontageNpArray()),
         t.JoinArrays(),
         t.TanhClipNpArray(4),
         t.ToTensor(),
     ]
 
 
+def metrics(hparams):
+    return {
+        "mse": MeanSquaredError(),
+        "mean_y_pred": m.MetricWrapper(
+            t.TransformCompose(*output_transforms(hparams)),
+            m.MeanProbability(class_names=VOTE_NAMES),
+        ),
+        "mean_y": m.MetricWrapper(
+            lambda y_pred, y: (y, y_pred),
+            m.MeanProbability(class_names=VOTE_NAMES),
+        ),
+        "cross_entropy": m.MetricWrapper(
+            t.TransformCompose(*output_transforms(hparams)),
+            m.PooledMean(
+                nn.CrossEntropyLoss(),
+            )
+        ),
+        "prob_distribution": m.MetricWrapper(
+            t.TransformCompose(*output_transforms(hparams)),
+            m.ProbabilityDistribution(class_names=VOTE_NAMES),
+        ),
+        "prob_density": m.MetricWrapper(
+            t.TransformCompose(*output_transforms(hparams)),
+            m.ProbabilityDistribution(class_names=VOTE_NAMES),
+        ),
+    }
+
+
 def train_config(hparams):
+    optimizer_factory = partial(
+        optim.Adam,
+        lr=hparams["config"]["learning_rate"],
+    )
+
+    scheduler_factory = lambda opt: {
+        "scheduler": optim.lr_scheduler.MultiStepLR(
+            opt,
+            milestones=hparams["config"]["milestones"],
+            gamma=hparams["config"]["gamma"],
+        ),
+        "monitor": hparams["config"]["monitor"],
+    }
+
     module = TrainModule(
         model_config(hparams),
         loss_function=nn.KLDivLoss(reduction="batchmean"),
-        metrics={
-            "mse": MeanSquaredError(),
-        },
-        optimizer_factory=partial(
-            optim.Adam,
-            lr=hparams["config"]["learning_rate"],
-        ),
-        scheduler_factory=lambda opt: {
-            "scheduler": optim.lr_scheduler.MultiStepLR(
-                opt,
-                milestones=hparams["config"]["milestones"],
-                gamma=hparams["config"]["gamma"],
-            ),
-            "monitor": hparams["config"]["monitor"],
-        },
+        metrics=metrics(hparams),
+        optimizer_factory=optimizer_factory,
+        scheduler_factory=scheduler_factory,
     )
 
     data_dir = "./data/hms/train_eegs"
@@ -132,10 +218,7 @@ def train_config(hparams):
         data_dir=data_dir,
         annotations=pd.read_csv(DATA_PROCESSED_DIR / "train.csv"),
         augmentation=t.TransformCompose(
-            t.TransformIterable(
-                t.RandomSaggitalFlipNpArray(),
-                apply_to=["EEG"]
-            )
+            t.TransformIterable(["EEG"], t.RandomSaggitalFlipNpArray())
         ),
         transform=t.TransformCompose(
             *transforms(hparams),
@@ -185,32 +268,32 @@ def num_workers(hparams) -> int:
     )
 
 
-def predict_config(hparams):
+def output_transforms(hparams):
+    return [
+        lambda y_pred, md: (torch.exp(y_pred), md),
+        lambda y_pred, md: (y_pred.to(torch.double), md),
+        lambda y_pred, md: (torch.softmax(y_pred, axis=1), md),
+    ]
+
+
+def predict_config(hparams, weights_path=None):
     module = PredictModule(
         model_config(hparams),
-        transform=Compose(
-            [
-                lambda y_pred, md: (y_pred.squeeze(-1), md),
-                lambda y_pred, md: (torch.exp(y_pred), md),
-                lambda y_pred, md: (y_pred.to(torch.double), md),
-                lambda y_pred, md: (torch.softmax(y_pred, axis=1), md),
-                lambda y_pred, md: (y_pred.cpu().numpy(), md),
-            ]
+        transform=t.TransformCompose(
+            *output_transforms(hparams),
+            lambda y_pred, md: (y_pred.cpu().numpy(), md),
         ),
     )
 
-    weights_path = Path(hparams["predict"]["weights_path"])
+    weights_path = weights_path or hparams["predict"]["weights_path"]
+    weights_path = Path(weights_path)
     ckpt = torch.load(weights_path, map_location="cpu")
-    module.load_state_dict(ckpt["state_dict"], strict=False)
+    module.load_state_dict(ckpt["state_dict"])
 
     data_dir = Path(hparams["predict"]["data_dir"])
-    annotations = pd.DataFrame(
-        {"eeg_id": [fp.stem for fp in data_dir.glob("*.parquet")]}
-    )
-    predict_dataset = HmsPredictDataset(
+    predict_dataset = PredictHmsDataset(
         data_dir=data_dir,
-        annotations=annotations,
-        transform=Compose(transforms(hparams)),
+        transform=t.TransformCompose(*transforms(hparams)),
     )
 
     return dict(
@@ -222,4 +305,3 @@ def predict_config(hparams):
             shuffle=False,
         ),
     )
-

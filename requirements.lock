@@ -40,6 +40,10 @@ fsspec==2024.2.0
     # via lightning
     # via pytorch-lightning
     # via torch
+gitdb==4.0.11
+    # via gitpython
+gitpython==3.1.42
+    # via hms-brain-activity
 grpcio==1.62.1
     # via tensorboard
 idna==3.6
@@ -132,6 +136,8 @@ pandas==2.2.1
 pillow==10.2.0
     # via matplotlib
     # via torchvision
+pip==24.0
+    # via hms-brain-activity
 platformdirs==4.2.0
     # via pooch
 plotly==5.19.0
@@ -168,6 +174,8 @@ setuptools==69.1.1
 six==1.16.0
     # via python-dateutil
     # via tensorboard
+smmap==5.0.1
+    # via gitdb
 sympy==1.12
     # via torch
 tenacity==8.2.3
