@@ -277,7 +277,7 @@ def output_transforms(hparams):
     ]
 
 
-def predict_config(hparams, weights_path, dataset_args):
+def predict_config(hparams, predict_args):
     module = PredictModule(
         model_config(hparams),
         transform=TransformCompose(
@@ -286,7 +286,7 @@ def predict_config(hparams, weights_path, dataset_args):
         ),
     )
 
-    weights_path = weights_path or hparams["predict"]["weights_path"]
+    weights_path, *dataset_args = predict_args
     weights_path = Path(weights_path)
     ckpt = torch.load(weights_path, map_location="cpu")
     module.load_state_dict(ckpt["state_dict"])
