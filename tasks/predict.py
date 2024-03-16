@@ -4,9 +4,9 @@ from typing import List
 
 import pytorch_lightning as pl
 
-from hms_brain_activity import logger
-from hms_brain_activity.core.utils import import_script_as_module, print_dict
-from hms_brain_activity.core.callbacks import SubmissionWriter
+from src.hms_brain_activity import logger
+from src.hms_brain_activity.core.utils import import_script_as_module, print_dict
+from src.hms_brain_activity.core.callbacks import SubmissionWriter
 
 logger = logger.getChild(__name__)
 

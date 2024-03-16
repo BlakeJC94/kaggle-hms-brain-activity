@@ -8,10 +8,10 @@ from torch.utils.data import DataLoader
 from torchmetrics import MeanSquaredError
 from torchvision.transforms.v2 import Compose
 
-from hms_brain_activity.module import TrainModule
-from hms_brain_activity.datasets import HmsClassificationDataset
-from hms_brain_activity import transforms as t
-from hms_brain_activity.utils import split_annotations_across_patients
+from src.hms_brain_activity.module import TrainModule
+from src.hms_brain_activity.datasets import HmsClassificationDataset
+from src.hms_brain_activity import transforms as t
+from src.hms_brain_activity.utils import split_annotations_across_patients
 
 
 class PlaceholderModel(nn.Module):

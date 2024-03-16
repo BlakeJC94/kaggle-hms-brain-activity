@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List
 
 import git
-from hms_brain_activity import logger
+from src.hms_brain_activity import logger
 
 logger = logger.getChild(__name__)
 

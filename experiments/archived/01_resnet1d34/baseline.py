@@ -11,9 +11,7 @@ hparams = {
         # "weights_only": False,
     },
     "trainer": {
-        "init": {
-            "enable_progress_bar": False,
-        },
+        "init": {},
     },
     "config": {
         "sample_rate": 200.0,

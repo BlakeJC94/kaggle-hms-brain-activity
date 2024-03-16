@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 import pytorch_lightning as pl
 import torch
-from hms_brain_activity.globals import VOTE_NAMES
+from src.hms_brain_activity.globals import VOTE_NAMES
 
 logger = logging.getLogger(__name__)
 

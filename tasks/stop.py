@@ -3,7 +3,7 @@ import os
 import signal
 from pathlib import Path
 
-from hms_brain_activity import logger
+from src.hms_brain_activity import logger
 
 logger = logger.getChild(__name__)
 

@@ -4,8 +4,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict
 
-from hms_brain_activity.paths import get_task_dir_name
 from pytorch_lightning.loggers import TensorBoardLogger
+
+from src.hms_brain_activity.paths import get_task_dir_name
 
 try:
     from clearml import Task
@@ -69,9 +70,12 @@ class ClearMlLogger(TensorBoardLogger):
 
         # Increment version of task
         max_task_v = max(
-            Task.get_tasks(project_name=project_name, task_name="^02_efficientnet_spectro-baseline-v")
+            Task.get_tasks(
+                project_name=project_name,
+                task_name="^02_efficientnet_spectro-baseline-v",
+            ),
             default=-1,
-            key=lambda t: int(re.search(r'v(\d+)', t.name.split("-",2)[-1]) or "-1"),
+            key=lambda t: int(re.search(r"v(\d+)", t.name.split("-", 2)[-1]) or "-1"),
         )
         task_name = "-".join([task_name, str(max_task_v + 1)])
 

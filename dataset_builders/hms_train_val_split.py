@@ -3,8 +3,8 @@ from typing import Tuple
 from sklearn.model_selection import train_test_split
 import pandas as pd
 
-from hms_brain_activity.globals import VOTE_NAMES
-from hms_brain_activity.paths import DATA_PROCESSED_DIR
+from src.hms_brain_activity.globals import VOTE_NAMES
+from src.hms_brain_activity.paths import DATA_PROCESSED_DIR
 
 
 def split_annotations_across_patients(
