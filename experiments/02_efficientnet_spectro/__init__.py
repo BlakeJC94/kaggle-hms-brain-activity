@@ -50,19 +50,19 @@ class PostProcessSpectrograms(_BaseTransform):
         self.max_frequency = max_frequency
 
     def compute(self, x, md):
-        _num_batches, _num_channels, num_freqs, _num_timesteps = x.shape
+        _num_channels, num_freqs, _num_timesteps = x.shape
         x = x / self.sample_rate
 
         # Set near-0 values to a fixed floor to prevent log(tiny value) creating large negative
         # values that obscure the actual meaningful signal
         x[x < 1e-10] = 1e-10
-        x = 20 * torch.log(x)
+        x = torch.log(x)
 
         # Trim unwanted frequencies
         frequencies = np.linspace(0, self.sample_rate / 2, num_freqs)
         frequency_mask = frequencies <= self.max_frequency
         # Leave batch, channel & time dims; slice the frequency dim
-        x = x[:, :, frequency_mask, :]
+        x = x[..., frequency_mask, :]
 
         return x, md
 
@@ -70,7 +70,7 @@ class PostProcessSpectrograms(_BaseTransform):
 class AggregateSpectrograms(_BaseTransform):
     def compute(self, x, md):
         out = [
-            torch.nanmean(x[:, sl, :, :], dim=1, keepdim=True)
+            torch.nanmean(x[..., sl, :, :], dim=-3, keepdim=True)
             for sl in [
                 slice(0, 4),
                 slice(4, 8),
@@ -80,7 +80,7 @@ class AggregateSpectrograms(_BaseTransform):
                 # slice(18, 19),  # ECG
             ]
         ]
-        return torch.cat(out, dim=1), md
+        return torch.cat(out, dim=-3), md
 
 
 def model_config(hparams):
