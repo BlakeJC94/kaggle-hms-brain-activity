@@ -24,23 +24,24 @@ import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
 import torch
-from hms_brain_activity import metrics as m
-from hms_brain_activity import transforms as t
-from hms_brain_activity.core.modules import PredictModule, TrainModule
-from hms_brain_activity.core.transforms import (
-    DataTransform,
-    TransformCompose,
-    TransformIterable,
-    _BaseTransform,
-)
-from hms_brain_activity.datasets import HmsDataset, PredictHmsDataset
-from hms_brain_activity.globals import VOTE_NAMES
-from hms_brain_activity.paths import DATA_PROCESSED_DIR
 from torch import nn, optim
 from torch.utils.data import DataLoader
 from torchaudio.transforms import Spectrogram
 from torchmetrics import MeanSquaredError
 from torchvision.models.efficientnet import efficientnet_v2_s
+
+from src.hms_brain_activity import metrics as m
+from src.hms_brain_activity import transforms as t
+from src.hms_brain_activity.core.modules import PredictModule, TrainModule
+from src.hms_brain_activity.core.transforms import (
+    DataTransform,
+    TransformCompose,
+    TransformIterable,
+    _BaseTransform,
+)
+from src.hms_brain_activity.datasets import HmsDataset, PredictHmsDataset
+from src.hms_brain_activity.globals import VOTE_NAMES
+from src.hms_brain_activity.paths import DATA_PROCESSED_DIR
 
 
 class PostProcessSpectrograms(_BaseTransform):

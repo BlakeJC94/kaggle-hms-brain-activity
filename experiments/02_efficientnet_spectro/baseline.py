@@ -12,7 +12,6 @@ hparams = {
     },
     "trainer": {
         "init": {
-            "enable_progress_bar": False,
             # "devices": [1],
         },
     },

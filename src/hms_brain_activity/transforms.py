@@ -7,8 +7,8 @@ import numpy as np
 from torch import nn
 from scipy import signal
 
-from hms_brain_activity.globals import CHANNEL_NAMES
-from hms_brain_activity.core.transforms import _BaseTransform
+from src.hms_brain_activity.globals import CHANNEL_NAMES
+from src.hms_brain_activity.core.transforms import _BaseTransform
 
 
 class FillNanNpArray(_BaseTransform):

@@ -11,10 +11,10 @@ from torch.utils.data import DataLoader
 from torchmetrics import MeanSquaredError
 from torchvision.transforms.v2 import Compose
 
-from hms_brain_activity.module import TrainModule, PredictModule
-from hms_brain_activity.datasets import HmsDataset, HmsPredictDataset
-from hms_brain_activity import transforms as t
-from hms_brain_activity.paths import DATA_PROCESSED_DIR
+from src.hms_brain_activity.module import TrainModule, PredictModule
+from src.hms_brain_activity.datasets import HmsDataset, HmsPredictDataset
+from src.hms_brain_activity import transforms as t
+from src.hms_brain_activity.paths import DATA_PROCESSED_DIR
 
 
 class BasicBlock1d(nn.Module):

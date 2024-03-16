@@ -1,7 +1,7 @@
 from pathlib import Path
 
 PROJECT_DIR = Path(__file__).absolute().parent
-ROOT_DIR = PROJECT_DIR.parent
+ROOT_DIR = PROJECT_DIR.parent.parent
 
 ARTIFACTS_DIR = ROOT_DIR / "artifacts"
 ARTIFACTS_DIR.mkdir(exist_ok=True)
