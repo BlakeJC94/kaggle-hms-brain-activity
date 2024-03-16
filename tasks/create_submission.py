@@ -11,7 +11,7 @@ logger = logger.getChild(__name__)
 
 
 CODE_DIRS = [
-    "hms_brain_activity/",
+    "src/hms_brain_activity/",
     "tasks/",
 ]
 
