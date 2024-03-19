@@ -54,7 +54,27 @@ class TransformCompose(_BaseTransform):
         return len(self.transforms)
 
     def __getitem__(self, i):
-        foo = self.transform.transforms[i]
-        if isinstance(foo, list):
-            return TransformCompose(*foo)
-        return foo
+        transforms = self.transforms[i]
+        if isinstance(transforms, (tuple, list)):
+            return TransformCompose(*transforms)
+        return transforms
+
+
+class DataTransform(_BaseTransform):
+    def __init__(self, transform: Callable):
+        super().__init__()
+        self.transform = transform
+
+    def compute(self, x, md):
+        x = self.transform(x)
+        return x, md
+
+
+class MetadataTransform(_BaseTransform):
+    def __init__(self, transform: Callable):
+        super().__init__()
+        self.transform = transform
+
+    def compute(self, x, md):
+        md = self.transform(md)
+        return x, md
