@@ -186,7 +186,7 @@ def model_config(hparams):
     return nn.Sequential(
         nn.BatchNorm2d(num_features=n_channels),
         net,
-        nn.LogSoftmax(dim=1),
+        nn.SoftMax(dim=1),
     )
 
 
@@ -238,29 +238,23 @@ def transforms(hparams):
 def metrics(hparams):
     return {
         "mse": MeanSquaredError(),
-        "mean_y_pred": m.MetricWrapper(
-            TransformCompose(*output_transforms(hparams)),
-            m.MeanProbability(class_names=VOTE_NAMES),
-        ),
+        "mean_y_pred": m.MeanProbability(class_names=VOTE_NAMES),
         "mean_y": m.MetricWrapper(
             lambda y_pred, y: (y, y_pred),
             m.MeanProbability(class_names=VOTE_NAMES),
         ),
-        "cross_entropy": m.MetricWrapper(
-            TransformCompose(*output_transforms(hparams)),
+        "kl_div": m.MetricWrapper(
+            lambda y_pred, y: (torch.log(y_pred), y),
             m.PooledMean(
-                nn.CrossEntropyLoss(),
+                nn.KLDivLoss(reduction="batchmean"),
             ),
         ),
-        "prob_distribution": m.MetricWrapper(
-            TransformCompose(*output_transforms(hparams)),
-            m.ProbabilityDistribution(class_names=VOTE_NAMES),
-        ),
-        "prob_density": m.MetricWrapper(
-            TransformCompose(*output_transforms(hparams)),
-            m.ProbabilityDistribution(class_names=VOTE_NAMES),
-        ),
+        "prob_distribution": m.ProbabilityDistribution(class_names=VOTE_NAMES),
     }
+
+
+def loss_function(hparams):
+    return nn.CrossEntropyLoss(),
 
 
 def train_config(hparams):
@@ -341,7 +335,6 @@ def num_workers(hparams) -> int:
 
 def output_transforms(hparams):
     return [
-        lambda y_pred, md: (torch.exp(y_pred), md),
         lambda y_pred, md: (y_pred.to(torch.double), md),
         lambda y_pred, md: (torch.softmax(y_pred, axis=1), md),
     ]
