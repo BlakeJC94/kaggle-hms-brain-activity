@@ -279,10 +279,8 @@ def train_config(hparams):
         "monitor": hparams["config"]["monitor"],
     }
 
-    data_dir = "./data/hms/train_eegs"
-
     train_dataset = HmsDataset(
-        data_dir=data_dir,
+        data_dir=hparams['config']['data_dir'],
         annotations=pd.read_csv(hparams["config"]["train_ann"]),
         augmentation=TransformCompose(
             TransformIterable(["EEG"], t.RandomSaggitalFlipNpArray())
@@ -294,7 +292,7 @@ def train_config(hparams):
     )
 
     val_dataset = HmsDataset(
-        data_dir=data_dir,
+        data_dir=hparams['config']['data_dir'],
         annotations=pd.read_csv(hparams["config"]["val_ann"]),
         transform=TransformCompose(
             *transforms(hparams),

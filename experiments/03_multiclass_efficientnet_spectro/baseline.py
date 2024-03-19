@@ -16,8 +16,9 @@ hparams = {
         },
     },
     "config": {
-        "train_ann": "./data/processed/multiclass_one_hot/train_0.csv"
-        "val_ann": "./data/processed/multiclass_one_hot/val_0.csv"
+        "data_dir": "./data/hms/train_eegs",
+        "train_ann": "./data/processed/multiclass_one_hot/train_0.csv",
+        "val_ann": "./data/processed/multiclass_one_hot/val_0.csv",
         "sample_rate": 200.0,
         "bandpass_low": 0.3,
         "bandpass_high": 75.0,
