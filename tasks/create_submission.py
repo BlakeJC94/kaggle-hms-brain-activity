@@ -42,18 +42,22 @@ def parse() -> argparse.Namespace:
 
 def create_submission(hparams_path: str, predict_args: List[str]):
     weights_path, *_ = predict_args
+    weights_path = Path(weights_path)
 
     dt = datetime.now()
     repo = git.Repo(".")
     commit_sha, branch_name = repo.rev_parse("HEAD").name_rev.split(" ", 1)
 
-    zip_name = f"submission_{dt.strftime('%Y-%m-%d_%H-%M-%S')}_{branch_name}_{commit_sha[:8]}.zip"
-    logger.info(f"Creating submission '{zip_name}'")
-
     has_unstaged_changes = repo.is_dirty()
     patch = None
+    zip_suffix = ""
     if has_unstaged_changes:
         patch = repo.git.execute(["git", "diff", "--", *CODE_DIRS, *MD_FILES])
+        zip_suffix = "_unstaged"
+
+    zip_name =
+    f"submission_{dt.strftime('%Y-%m-%d_%H-%M-%S')}_{branch_name}_{commit_sha[:8]}{zip_suffix}.zip"
+    logger.info(f"Creating submission '{zip_name}'")
 
     run_script_template = create_run_script_template(
         dt,
@@ -127,8 +131,7 @@ def compress_weights(weights_path: Path, tmp_dir):
     ckpt_new = {"state_dict": ckpt["state_dict"]}
 
     weights_path_new = tmp_dir / weights_path.name
-    with open(weights_path_new, "w") as f:
-        torch.save(ckpt_new, f)
+    torch.save(ckpt_new, weights_path_new)
 
     return weights_path_new
 
