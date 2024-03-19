@@ -3,6 +3,8 @@ lightning_logs/*
 *.ckpt
 *.csv
 *.zip
+scrap*
+*.pid
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

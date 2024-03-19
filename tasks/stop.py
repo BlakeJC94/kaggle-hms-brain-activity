@@ -1,28 +1,31 @@
+import argparse
 import os
 import signal
 from pathlib import Path
 
-from hms_brain_activity import logger
+from src.hms_brain_activity import logger
+
+logger = logger.getChild(__name__)
 
 
-def main():
-    foo = [
-        (
-            fp.parent.stem,
-            int((fp.parent / "stat").read_text().split(" ")[21]),
-        )
-        for fp in Path("/proc").glob("*/cmdline")
-        if "train.py" in fp.read_text()
-        and int((fp.parent / "status").read_text().split("\n")[8].split("\t")[1])
-        == os.getuid()
-    ]
+def main() -> str:
+    return stop(**vars(parse()))
 
-    if len(foo) == 0:
-        logger.error("No matching processes")
+
+def parse() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("pid_file")
+    return parser.parse_args()
+
+
+def stop(pid_file):
+    pid_file = Path(pid_file)
+    if not pid_file.exists():
+        logger.info(f"Given PID file '{pid_file}' doesn't exist, exiting")
         return
 
-    foo = sorted(foo, key=lambda x: x[1])
-    pid = int(foo[0][0])
+    with open(pid_file, "r") as f:
+        pid = int(f.read())
 
     logger.info(f"Sending interrupt to {pid}")
     os.kill(pid, signal.SIGINT)
