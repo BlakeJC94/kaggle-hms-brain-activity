@@ -24,76 +24,68 @@ import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
 import torch
-from hms_brain_activity import metrics as m
-from hms_brain_activity import transforms as t
-from hms_brain_activity.core.modules import PredictModule, TrainModule
-from hms_brain_activity.core.transforms import (TransformCompose,
-                                                TransformIterable)
-from hms_brain_activity.datasets import HmsDataset, PredictHmsDataset
-from hms_brain_activity.globals import VOTE_NAMES
-from hms_brain_activity.paths import DATA_PROCESSED_DIR
 from torch import nn, optim
 from torch.utils.data import DataLoader
 from torchaudio.transforms import Spectrogram
 from torchmetrics import MeanSquaredError
 from torchvision.models.efficientnet import efficientnet_v2_s
 
+from src.hms_brain_activity import metrics as m
+from src.hms_brain_activity import transforms as t
+from src.hms_brain_activity.core.modules import PredictModule, TrainModule
+from src.hms_brain_activity.core.transforms import (
+    DataTransform,
+    TransformCompose,
+    TransformIterable,
+    _BaseTransform,
+)
+from src.hms_brain_activity.datasets import HmsDataset, PredictHmsDataset
+from src.hms_brain_activity.globals import VOTE_NAMES
+from src.hms_brain_activity.paths import DATA_PROCESSED_DIR
 
-class PostProcessSpectrograms(nn.Module):
+
+class PostProcessSpectrograms(_BaseTransform):
     def __init__(self, sample_rate, max_frequency):
         super().__init__()
         self.sample_rate = sample_rate
         self.max_frequency = max_frequency
 
-    def forward(self, x):
-        _num_batches, _num_channels, num_freqs, _num_timesteps = x.shape
+    def compute(self, x, md):
+        _num_channels, num_freqs, _num_timesteps = x.shape
         x = x / self.sample_rate
 
         # Set near-0 values to a fixed floor to prevent log(tiny value) creating large negative
         # values that obscure the actual meaningful signal
         x[x < 1e-10] = 1e-10
-        x = 20 * torch.log(x)
+        x = torch.log(x)
 
         # Trim unwanted frequencies
         frequencies = np.linspace(0, self.sample_rate / 2, num_freqs)
         frequency_mask = frequencies <= self.max_frequency
         # Leave batch, channel & time dims; slice the frequency dim
-        x = x[:, :, frequency_mask, :]
+        x = x[..., frequency_mask, :]
 
-        return x
+        return x, md
 
 
-class AggregateSpectrograms(nn.Module):
-    def forward(self, x):
+class AggregateSpectrograms(_BaseTransform):
+    def compute(self, x, md):
         out = [
-            torch.nanmean(x[:, sl, :, :], dim=1, keepdim=True)
+            torch.nanmean(x[..., sl, :, :], dim=-3, keepdim=True)
             for sl in [
                 slice(0, 4),
                 slice(4, 8),
                 slice(8, 12),
                 slice(12, 16),
-                slice(16, 18),  # Sagittal plane EEG
-                slice(18, 19),  # ECG
+                # slice(16, 18),  # Sagittal plane EEG
+                # slice(18, 19),  # ECG
             ]
         ]
-        return torch.cat(out, dim=1)
-
-
-class AsymmetricSpectrograms(nn.Module):
-    def forward(self, x):
-        out = [x]
-        for i, j in [
-            (1, 2),
-            (3, 4),
-        ]:
-            res = (x[:, j, ...] / (x[:, i, ...] + x[:, j, ...]) * 100) - 50
-            res = torch.nan_to_num(res, 0)
-            out.append(res.unsqueeze(1))
-        return torch.cat(out, dim=1)
+        return torch.cat(out, dim=-3), md
 
 
 def model_config(hparams):
-    n_channels = 8
+    n_channels = 4
     n_classes = len(VOTE_NAMES)
 
     # Create Network
@@ -113,15 +105,6 @@ def model_config(hparams):
     net.features[0][0] = _conv0
 
     return nn.Sequential(
-        Spectrogram(
-            int(hparams["config"]["sample_rate"]),
-            hop_length=int(hparams["config"]["sample_rate"]),
-            center=False,
-            power=2,
-        ),
-        PostProcessSpectrograms(hparams["config"]["sample_rate"], max_frequency=80),
-        AggregateSpectrograms(),
-        AsymmetricSpectrograms(),
         net,
         nn.LogSoftmax(dim=1),
     )
@@ -159,6 +142,16 @@ def transforms(hparams):
         t.JoinArrays(),
         t.TanhClipNpArray(4),
         t.ToTensor(),
+        DataTransform(
+            Spectrogram(
+                int(hparams["config"]["sample_rate"]),
+                hop_length=int(hparams["config"]["sample_rate"]),
+                center=False,
+                power=2,
+            ),
+        ),
+        PostProcessSpectrograms(hparams["config"]["sample_rate"], max_frequency=80),
+        AggregateSpectrograms(),
     ]
 
 

@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 from torch.utils.data import Dataset
 
-from hms_brain_activity.core.datasets import BaseDataset, CollateData
-from hms_brain_activity.globals import CHANNEL_NAMES, VOTE_NAMES
+from src.hms_brain_activity.core.datasets import BaseDataset, CollateData
+from src.hms_brain_activity.globals import CHANNEL_NAMES, VOTE_NAMES
 
 logger = logging.getLogger(__name__)
 

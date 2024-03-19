@@ -6,13 +6,11 @@ from typing import Any, Dict, Tuple
 import pytorch_lightning as pl
 import torch
 from clearml import Task
-
-from hms_brain_activity import logger
-from hms_brain_activity.paths import ARTIFACTS_DIR
-from hms_brain_activity.core.loggers import ClearMlLogger
-from hms_brain_activity.core.callbacks import EpochProgress, NanMonitor, PidMonitor
-from hms_brain_activity.paths import get_task_dir_name
-from hms_brain_activity.core.utils import import_script_as_module, print_dict
+from src.hms_brain_activity import logger
+from src.hms_brain_activity.core.callbacks import EpochProgress, NanMonitor, PidMonitor
+from src.hms_brain_activity.core.loggers import ClearMlLogger
+from src.hms_brain_activity.core.utils import import_script_as_module, print_dict
+from src.hms_brain_activity.paths import ARTIFACTS_DIR, get_task_dir_name
 
 logger = logger.getChild(__name__)
 
@@ -24,7 +22,13 @@ def main() -> str:
 def parse() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("hparams_path")
-    parser.add_argument("-d", "--dev-run", type=float, default=0.0, help="Overfit batches (float as as fraction of batches, negative integer for one batch)")
+    parser.add_argument(
+        "-d",
+        "--dev-run",
+        type=float,
+        default=0.0,
+        help="Overfit batches (float as as fraction of batches, negative integer for one batch)",
+    )
     parser.add_argument("-D", "--pdb", action="store_true", default=False)
     parser.add_argument("-o", "--offline", action="store_true", default=False)
     return parser.parse_args()
@@ -55,9 +59,7 @@ def train(
     hparams, config = load_weights(hparams, config)
 
     # Create task name
-    task_name = "-".join(Path(hparams_path).parts[-2:]).removesuffix(".py")
-    if dev_run:
-        task_name = f"dev-{task_name}"
+    task_name = get_task_name(hparams_path, dev_run)
     logger.info(f"Task name: {task_name}")
 
     # Initialise logger
@@ -101,6 +103,7 @@ def train(
         "accelerator": "gpu" if torch.cuda.is_available() else "cpu",
         "callbacks": callbacks,
         "num_sanity_val_steps": 0,
+        "enable_progress_bar": False,
         "max_epochs": -1,
         **hparams["trainer"].get("init", {}),
     }
@@ -130,6 +133,13 @@ def train(
         raise err
 
     return task.id
+
+
+def get_task_name(hparams_path: Path, dev_run: bool):
+    task_name = "-".join(Path(hparams_path).parts[-2:]).removesuffix(".py")
+    if dev_run:
+        task_name = f"dev-{task_name}"
+    return task_name
 
 
 def get_hparams_and_config_path(

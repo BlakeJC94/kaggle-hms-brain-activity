@@ -1,14 +1,14 @@
 import abc
 import random
-from typing import List, Tuple, Literal
+from typing import List, Literal, Tuple
 
-import torch
 import numpy as np
-from torch import nn
+import torch
 from scipy import signal
+from torch import nn
 
-from hms_brain_activity.globals import CHANNEL_NAMES
-from hms_brain_activity.core.transforms import _BaseTransform
+from src.hms_brain_activity.core.transforms import _BaseTransform
+from src.hms_brain_activity.globals import CHANNEL_NAMES
 
 
 class FillNanNpArray(_BaseTransform):
@@ -363,7 +363,9 @@ class DoubleBananaMontageNpArray(_BaseMontageNpArray):
 
 class RandomSaggitalFlipNpArray(_BaseMontageNpArray):
     def __init__(self):
-        self.montage = [(self.saggital_flip_channel(ch), "") for ch in CHANNEL_NAMES[:-1]]
+        self.montage = [
+            (self.saggital_flip_channel(ch), "") for ch in CHANNEL_NAMES[:-1]
+        ]
         super().__init__()
 
     @staticmethod
