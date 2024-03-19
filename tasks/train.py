@@ -1,11 +1,12 @@
 import argparse
 import os
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, Optional, List
 
 import pytorch_lightning as pl
 import torch
 from clearml import Task
+
 from src.hms_brain_activity import logger
 from src.hms_brain_activity.core.callbacks import EpochProgress, NanMonitor, PidMonitor
 from src.hms_brain_activity.core.loggers import ClearMlLogger
@@ -29,13 +30,21 @@ def parse() -> argparse.Namespace:
         default=0.0,
         help="Overfit batches (float as as fraction of batches, negative integer for one batch)",
     )
-    parser.add_argument("-D", "--pdb", action="store_true", default=False)
+    parser.add_argument(
+        "-g",
+        "--gpu-devices",
+        nargs="*",
+        type=int,
+        default=None,
+    )
+    parser.add_argument("--pdb", action="store_true", default=False)
     parser.add_argument("-o", "--offline", action="store_true", default=False)
     return parser.parse_args()
 
 
 def train(
     hparams_path: str,
+    gpu_devices: Optional[List[int]] = None,
     dev_run: bool = False,
     pdb: bool = False,
     offline: bool = False,
@@ -46,6 +55,7 @@ def train(
 
     logger.info(f"Process ID: {os.getpid()}")
 
+    logger.info(f"devices: {gpu_devices or 'auto'}")
     if dev_run:
         logger.info("DEV RUN")
     if pdb:
@@ -101,6 +111,7 @@ def train(
     trainer_init_kwargs = {
         "logger": clearml_logger,
         "accelerator": "gpu" if torch.cuda.is_available() else "cpu",
+        "devices": gpu_devices or "auto",
         "callbacks": callbacks,
         "num_sanity_val_steps": 0,
         "enable_progress_bar": False,
