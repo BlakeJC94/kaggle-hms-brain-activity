@@ -1,7 +1,7 @@
 import argparse
 import os
 from pathlib import Path
-from typing import Any, Dict, Tuple, Optional, List
+from typing import Any, Dict, List, Optional, Tuple
 
 import pytorch_lightning as pl
 import torch
@@ -48,7 +48,7 @@ def train(
     dev_run: bool = False,
     pdb: bool = False,
     offline: bool = False,
-) -> str:
+):
     """Choo choo"""
     pl.seed_everything(0, workers=True)
     torch.set_float32_matmul_precision("high")
@@ -142,8 +142,6 @@ def train(
             val_ds = config["val_dataloaders"]
             breakpoint()
         raise err
-
-    return task.id
 
 
 def get_task_name(hparams_path: Path, dev_run: bool):
