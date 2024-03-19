@@ -1,10 +1,12 @@
 import argparse
+import tempfile
 import zipfile
 from datetime import datetime
 from pathlib import Path
 from typing import List
 
 import git
+import torch
 from hms_brain_activity import logger
 
 logger = logger.getChild(__name__)
@@ -60,7 +62,8 @@ def create_submission(hparams_path: str, predict_args: List[str]):
         has_unstaged_changes,
     )
 
-    with zipfile.ZipFile(zip_name, "w") as zf:
+    with zipfile.ZipFile(zip_name, "w") as zf, tempfile.TemporaryDirectory() as tmp_dir:
+        weights_path = compress_weights(weights_path, Path(tmp_dir))
         add_config_to_zip(zf, hparams_path, weights_path, run_script_template)
 
         for md_file in MD_FILES:
@@ -117,6 +120,17 @@ def create_run_script_template(
     ]
     run_script_template = "\n".join(run_script_template_lines)
     return run_script_template
+
+
+def compress_weights(weights_path: Path, tmp_dir):
+    ckpt = torch.load(weights_path, map_location="cpu")
+    ckpt_new = {"state_dict": ckpt["state_dict"]}
+
+    weights_path_new = tmp_dir / weights_path.name
+    with open(weights_path_new, "w") as f:
+        torch.save(ckpt_new, f)
+
+    return weights_path_new
 
 
 def add_config_to_zip(zf, hparams_path, weights_path, run_script_template):
