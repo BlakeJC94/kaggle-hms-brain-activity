@@ -1,2 +1,2 @@
 hms
-!processed/*.csv
+!processed/**/*.csv
