@@ -296,7 +296,7 @@ def train_config(hparams):
     )
 
     return dict(
-        module=TrainModule(
+        model=TrainModule(
             model_config(hparams),
             loss_function=nn.KLDivLoss(reduction="batchmean"),
             metrics=metrics(hparams),
