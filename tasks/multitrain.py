@@ -1,11 +1,10 @@
 import argparse
+import os
 import concurrent.futures as cf
-from multiprocessing import Process
 from typing import List, Optional
 
 from src.hms_brain_activity import logger
-
-from .train import train
+from tasks.train import train
 
 logger = logger.getChild(__name__)
 
@@ -32,6 +31,8 @@ def multitrain(
     gpu_devices: Optional[List[int]] = None,
     offline: bool = False,
 ):
+    logger.info(f"Process ID: {os.getpid()}")
+
     if gpu_devices is None:
         gpu_devices = [None]
 
