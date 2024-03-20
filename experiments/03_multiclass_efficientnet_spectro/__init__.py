@@ -198,7 +198,7 @@ def model_config(hparams):
 def transforms(hparams):
     return [
         *[
-            TransformIterable(["EEG"], transform)
+            TransformIterable(["EEG", "ECG"], transform)
             for transform in [
                 t.Pad(padlen=2 * hparams["config"]["sample_rate"]),
                 t.HighPassNpArray(
