@@ -8,12 +8,6 @@
 - Compute spectrograms
 - Average across electrode groups
 - Append asymmetric spectrograms across sagittal plane
-
-TODO
-- Multi-taper spectrogram
-- Better filtering
-- Heart rate feature
-
 """
 
 import os
