@@ -1,6 +1,6 @@
 [project]
 name = "hms-brain-activity"
-version = "0.1.0"
+version = "0.2.0"
 description = "An attempt at a Kaggle competition for seizure detection."
 authors = [
     { name = "BlakeJC94", email = "blakejamescook@gmail.com" }
