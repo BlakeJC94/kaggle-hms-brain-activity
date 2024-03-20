@@ -25,8 +25,12 @@ dependencies = [
 readme = "README.md"
 requires-python = ">= 3.10"
 
-# [project.scripts]
-# "my-project" = "my_project:main"
+[project.scripts]
+"train" = "tasks.train:main"
+"multitrain" = "tasks.multitrain:main"
+"predict" = "tasks.predict:main"
+"stop" = "tasks.stop:main"
+"create-submission" = "tasks.create_submission:main"
 
 [build-system]
 requires = ["hatchling"]

@@ -14,10 +14,11 @@ logger = logger.getChild(__name__)
 
 CODE_DIRS = [
     "src/hms_brain_activity/",
-    "tasks/",
+    "src/tasks/",
 ]
 
 MD_FILES = [
+    "src/__init__.py",
     "pyproject.toml",
     ".python-version",
     "requirements.lock",
