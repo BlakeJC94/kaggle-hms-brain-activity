@@ -186,7 +186,7 @@ def model_config(hparams):
     return nn.Sequential(
         nn.BatchNorm2d(num_features=n_channels),
         net,
-        nn.SoftMax(dim=1),
+        nn.Softmax(dim=1),
     )
 
 
