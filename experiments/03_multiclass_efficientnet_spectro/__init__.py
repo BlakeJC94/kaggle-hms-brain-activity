@@ -110,11 +110,15 @@ class MultiTaperSpectrogram(nn.Module):
         return int(time_halfbandwidth_product), num_tapers
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        batch_size, n_channels, n_timesteps = x.shape
+        n_channels, n_timesteps = x.shape[-2:]
 
         n_freq = self.n_fft // 2 + 1
         n_frames = self.n_frames(n_timesteps)
-        xtaper = torch.zeros(batch_size, n_channels, n_freq, n_frames)
+        if x.ndim == 3:
+            batch_size = x.shape[0]
+            xtaper = torch.zeros(batch_size, n_channels, n_freq, n_frames)
+        else:
+            xtaper = torch.zeros(n_channels, n_freq, n_frames)
         xtaper = xtaper.to(x)  # Ensure tensor is on correct device
 
         for spectrogram in self.taper_spectrograms:
