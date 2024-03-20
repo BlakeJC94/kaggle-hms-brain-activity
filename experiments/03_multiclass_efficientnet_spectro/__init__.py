@@ -280,7 +280,6 @@ def train_config(hparams):
         ),
         transform=TransformCompose(
             *transforms(hparams),
-            t.VotesToProbabilities(),
         ),
     )
 
@@ -289,7 +288,6 @@ def train_config(hparams):
         annotations=pd.read_csv(hparams["config"]["val_ann"]),
         transform=TransformCompose(
             *transforms(hparams),
-            t.VotesToProbabilities(),
         ),
     )
 
