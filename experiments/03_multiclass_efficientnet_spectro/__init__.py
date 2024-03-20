@@ -121,15 +121,14 @@ class MultiTaperSpectrogram(nn.Module):
         return xtaper / len(self.taper_spectrograms)
 
 
-class PostProcessSpectrograms(_BaseTransform):
+class PostProcessSpectrograms(nn.Module):
     def __init__(self, sample_rate, max_frequency):
         super().__init__()
         self.sample_rate = sample_rate
         self.max_frequency = max_frequency
 
-    def compute(self, x, md):
+    def forward(self, x):
         _num_channels, num_freqs, _num_timesteps = x.shape
-        x = x / self.sample_rate
 
         # Set near-0 values to a fixed floor to prevent log(tiny value) creating large negative
         # values that obscure the actual meaningful signal
@@ -142,11 +141,11 @@ class PostProcessSpectrograms(_BaseTransform):
         # Leave batch, channel & time dims; slice the frequency dim
         x = x[..., frequency_mask, :]
 
-        return x, md
+        return x
 
 
-class AggregateSpectrograms(_BaseTransform):
-    def compute(self, x, md):
+class AggregateSpectrograms(nn.Module):
+    def forward(self, x):
         out = [
             torch.nanmean(x[..., sl, :, :], dim=-3, keepdim=True)
             for sl in [
@@ -158,7 +157,7 @@ class AggregateSpectrograms(_BaseTransform):
                 # slice(18, 19),  # ECG
             ]
         ]
-        return torch.cat(out, dim=-3), md
+        return torch.cat(out, dim=-3)
 
 
 def model_config(hparams):
