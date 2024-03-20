@@ -25,7 +25,7 @@ hparams = {
         "learning_rate": 3 * 1e-3,
         "weight_decay": 0.01,
         "num_workers": 10,
-        "batch_size": 512,
+        "batch_size": 256,
         "patience": 20,
         "milestones": [20],
         "gamma": 0.2,
