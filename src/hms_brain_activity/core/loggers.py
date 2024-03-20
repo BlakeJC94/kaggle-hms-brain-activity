@@ -69,15 +69,16 @@ class ClearMlLogger(TensorBoardLogger):
                 raise ValueError(f"The character '-' is forbidden in the {k} ('{v}')")
 
         # Increment version of task
-        max_task_v = max(
-            Task.get_tasks(
-                project_name=project_name,
-                task_name="^02_efficientnet_spectro-baseline-v",
-            ),
-            default=-1,
-            key=lambda t: int(re.search(r"v(\d+)", t.name.split("-", 2)[-1]) or "-1"),
-        )
-        task_name = "-".join([task_name, str(max_task_v + 1)])
+        prev_tasks = Task.get_tasks(project_name=project_name, task_name=f"^{task_name}",)
+        max_task_v = -1
+        for t in prev_tasks:
+            version_suffix = t.name.split("-", 2)[-1]
+            version_search = re.search(r"\d+", version_suffix)
+            if version_search is None:
+                continue
+            version = int(version_search.group(0))
+            max_task_v = max(max_task_v, version)
+        task_name = "-v".join([task_name, str(max_task_v + 1)])
 
         # Start ClearML
         task_init_kwargs = hparams.get("task", {}).get("init", {})
