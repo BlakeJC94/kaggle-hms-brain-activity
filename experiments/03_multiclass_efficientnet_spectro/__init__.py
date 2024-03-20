@@ -128,7 +128,7 @@ class PostProcessSpectrograms(nn.Module):
         self.max_frequency = max_frequency
 
     def forward(self, x):
-        _num_channels, num_freqs, _num_timesteps = x.shape
+        num_freqs, _num_timesteps = x.shape[-2:]
 
         # Set near-0 values to a fixed floor to prevent log(tiny value) creating large negative
         # values that obscure the actual meaningful signal
