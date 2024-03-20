@@ -259,7 +259,7 @@ def metrics(hparams):
 
 
 def loss_function(hparams):
-    return nn.CrossEntropyLoss(),
+    return nn.CrossEntropyLoss()
 
 
 def train_config(hparams):
