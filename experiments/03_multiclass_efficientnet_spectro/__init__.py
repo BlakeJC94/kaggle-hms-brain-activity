@@ -225,6 +225,7 @@ def transforms(hparams):
         DataTransform(
             MultiTaperSpectrogram(
                 int(hparams["config"]["sample_rate"]),
+                int(hparams["config"]["sample_rate"]),
                 hop_length=int(hparams["config"]["sample_rate"]) // 2,
                 center=False,
                 power=2,
