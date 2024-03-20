@@ -39,8 +39,8 @@ def multitrain(
     with cf.ProcessPoolExecutor(max_workers=len(hparams_paths)) as pool:
         future_to_hparams_path = {}
         for i, hparams_path in enumerate(hparams_paths):
-            device = gpu_devices[i % len(gpu_devices)]
-            future = pool.submit(train, hparams_path, device=device, offline=offline)
+            gpu_device = gpu_devices[i % len(gpu_devices)]
+            future = pool.submit(train, hparams_path, gpu_device=gpu_device, offline=offline)
             future_to_hparams_path[future] = hparams_path
 
         for future in cf.as_completed(future_to_hparams_path):
