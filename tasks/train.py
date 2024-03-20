@@ -166,7 +166,6 @@ def set_hparams_debug_overrides(hparams, dev_run):
     """"""
     # Task overrides
     hparams["task"]["init"]["project_name"] = "test"
-    hparams["task"]["init"]["reuse_last_task_id"] = True
     hparams["task"]["init"]["continue_last_task"] = False
     # Config overrides
     hparams["config"]["num_workers"] = 0
