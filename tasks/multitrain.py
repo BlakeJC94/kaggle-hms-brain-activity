@@ -51,3 +51,6 @@ def multitrain(
                 print(f"Error occurred with '{hparams_path}': {exc}")
             else:
                 print(f"Experiment '{hparams_path}' has finished.")
+
+if __name__ == "__main__":
+    main()
