@@ -32,8 +32,7 @@ def parse() -> argparse.Namespace:
     )
     parser.add_argument(
         "-g",
-        "--gpu-devices",
-        nargs="*",
+        "--gpu-device",
         type=int,
         default=None,
     )
@@ -44,7 +43,7 @@ def parse() -> argparse.Namespace:
 
 def train(
     hparams_path: str,
-    gpu_devices: Optional[List[int]] = None,
+    gpu_device: Optional[int] = None,
     dev_run: bool = False,
     pdb: bool = False,
     offline: bool = False,
@@ -55,7 +54,7 @@ def train(
 
     logger.info(f"Process ID: {os.getpid()}")
 
-    logger.info(f"devices: {gpu_devices or 'auto'}")
+    logger.info(f"GPU device: {gpu_device}")
     if dev_run:
         logger.info("DEV RUN")
     if pdb:
@@ -111,7 +110,7 @@ def train(
     trainer_init_kwargs = {
         "logger": clearml_logger,
         "accelerator": "gpu" if torch.cuda.is_available() else "cpu",
-        "devices": gpu_devices or "auto",
+        "devices": "auto" if gpu_device is None else [gpu_device],
         "callbacks": callbacks,
         "num_sanity_val_steps": 0,
         "enable_progress_bar": False,
