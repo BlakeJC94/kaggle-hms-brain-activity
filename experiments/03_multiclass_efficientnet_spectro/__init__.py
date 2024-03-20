@@ -181,6 +181,15 @@ def model_config(hparams):
     net.features[0][0] = _conv0
 
     return nn.Sequential(
+        MultiTaperSpectrogram(
+            int(hparams["config"]["sample_rate"]),
+            int(hparams["config"]["sample_rate"]),
+            hop_length=int(hparams["config"]["sample_rate"]) // 4,
+            center=False,
+            power=2,
+        ),
+        PostProcessSpectrograms(hparams["config"]["sample_rate"], max_frequency=80),
+        AggregateSpectrograms(),
         nn.BatchNorm2d(num_features=n_channels),
         net,
         nn.Softmax(dim=1),
@@ -219,17 +228,6 @@ def transforms(hparams):
         t.JoinArrays(),
         t.TanhClipNpArray(4),
         t.ToTensor(),
-        DataTransform(
-            MultiTaperSpectrogram(
-                int(hparams["config"]["sample_rate"]),
-                int(hparams["config"]["sample_rate"]),
-                hop_length=int(hparams["config"]["sample_rate"]) // 2,
-                center=False,
-                power=2,
-            ),
-        ),
-        PostProcessSpectrograms(hparams["config"]["sample_rate"], max_frequency=80),
-        AggregateSpectrograms(),
     ]
 
 
