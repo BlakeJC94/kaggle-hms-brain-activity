@@ -192,7 +192,6 @@ def model_config(hparams):
         AggregateSpectrograms(),
         nn.BatchNorm2d(num_features=n_channels),
         net,
-        nn.Softmax(dim=1),
     )
 
 
@@ -223,24 +222,28 @@ def transforms(hparams):
                 t.Unpad(padlen=2 * hparams["config"]["sample_rate"]),
             ]
         ],
-        t.Scale({"EEG": 1 / (35 * 1.5), "ECG": 1 / 1e4}),
         TransformIterable(["EEG"], t.DoubleBananaMontageNpArray()),
         t.JoinArrays(),
-        t.TanhClipNpArray(4),
         t.ToTensor(),
     ]
 
 
 def metrics(hparams):
     return {
-        "mse": MeanSquaredError(),
-        "mean_y_pred": m.MeanProbability(class_names=VOTE_NAMES),
+        "mse": m.MetricWrapper(
+            lambda y_pred, y: (nn.functional.softmax(y_pred, dim=1), y),
+            MeanSquaredError(),
+        ),
+        "mean_y_pred": m.MetricWrapper(
+            lambda y_pred, y: (nn.functional.softmax(y_pred, dim=1), y),
+            m.MeanProbability(class_names=VOTE_NAMES),
+        ),
         "mean_y": m.MetricWrapper(
             lambda y_pred, y: (y, y_pred),
             m.MeanProbability(class_names=VOTE_NAMES),
         ),
         "kl_div": m.MetricWrapper(
-            lambda y_pred, y: (torch.log(y_pred), y),
+            lambda y_pred, y: (nn.functional.log_softmax(y_pred, dim=1), y),
             m.PooledMean(
                 nn.KLDivLoss(reduction="batchmean"),
             ),
