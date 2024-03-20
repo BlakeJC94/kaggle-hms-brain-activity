@@ -146,7 +146,7 @@ def train(
 def get_task_name(hparams_path: Path, dev_run: bool):
     task_name = "-".join(Path(hparams_path).parts[-2:]).removesuffix(".py")
     if dev_run:
-        task_name = f"dev-{task_name}"
+        task_name = f"dev_{task_name}"
     return task_name
 
 
