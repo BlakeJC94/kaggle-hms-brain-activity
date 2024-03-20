@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import StratifiedKFold
-from sklearn.preprocessing import LabelEncoder
 
 from src.hms_brain_activity.globals import VOTE_NAMES
 from src.hms_brain_activity.paths import DATA_PROCESSED_DIR
