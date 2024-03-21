@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import StratifiedKFold
 
-from src.hms_brain_activity.globals import VOTE_NAMES
-from src.hms_brain_activity.paths import DATA_PROCESSED_DIR
+from hms_brain_activity.globals import VOTE_NAMES
+from hms_brain_activity.paths import DATA_PROCESSED_DIR
 
 
 def main():

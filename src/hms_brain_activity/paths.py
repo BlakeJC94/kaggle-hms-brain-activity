@@ -4,7 +4,7 @@ PROJECT_DIR = Path(__file__).absolute().parent
 SRC_DIR = PROJECT_DIR.parent
 ROOT_DIR = SRC_DIR.parent
 
-ARTIFACTS_DIR = PROJECT_DIR / "artifacts"
+ARTIFACTS_DIR = ROOT_DIR / "artifacts"
 ARTIFACTS_DIR.mkdir(exist_ok=True)
 
 DATA_DIR = ROOT_DIR / "data"

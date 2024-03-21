@@ -1,8 +1,8 @@
 import torch
 import pytest
 
-from src.hms_brain_activity import transforms as t
-from src.hms_brain_activity.globals import CHANNEL_NAMES
+from hms_brain_activity import transforms as t
+from hms_brain_activity.globals import CHANNEL_NAMES
 
 
 class MockMontage(t._BaseMontageNpArray):

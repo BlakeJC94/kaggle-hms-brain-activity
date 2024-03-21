@@ -4,8 +4,8 @@ import pandas as pd
 from scipy.stats import mode
 from sklearn.model_selection import StratifiedKFold, StratifiedShuffleSplit
 
-from src.hms_brain_activity.globals import VOTE_NAMES
-from src.hms_brain_activity.paths import DATA_PROCESSED_DIR
+from hms_brain_activity.globals import VOTE_NAMES
+from hms_brain_activity.paths import DATA_PROCESSED_DIR
 
 
 def main():

@@ -16,13 +16,13 @@ from torchaudio.transforms import Spectrogram
 from torchmetrics import MeanSquaredError
 from torchvision.models.efficientnet import efficientnet_v2_m
 
-from src.core.modules import PredictModule, TrainModule
-from src.core.transforms import DataTransform, TransformCompose, TransformIterable, _BaseTransform
-from src.hms_brain_activity import metrics as m
-from src.hms_brain_activity import transforms as t
-from src.hms_brain_activity.callbacks import SubmissionWriter
-from src.hms_brain_activity.datasets import HmsDataset, PredictHmsDataset
-from src.hms_brain_activity.globals import VOTE_NAMES
+from core.modules import PredictModule, TrainModule
+from core.transforms import DataTransform, TransformCompose, TransformIterable, _BaseTransform
+from hms_brain_activity import metrics as m
+from hms_brain_activity import transforms as t
+from hms_brain_activity.callbacks import SubmissionWriter
+from hms_brain_activity.datasets import HmsDataset, PredictHmsDataset
+from hms_brain_activity.globals import VOTE_NAMES
 
 
 class MultiTaperSpectrogram(nn.Module):
@@ -162,14 +162,14 @@ class AggregateFrequencies(nn.Module):
 
         out = []
         for f_low, f_high in self.bands:
-            frequency_mask = f_low <= frequencies < f_high
-            out.append(torch.nanmean(x[..., frequency_mask, :]), dim=-2, keepdim=True)
+            frequency_mask = (frequencies >= f_low) & (frequencies < f_high)
+            out.append(torch.nanmean(x[..., frequency_mask, :], dim=-2, keepdim=True))
 
         return torch.cat(out, dim=-2)
 
 
 def model_config(hparams):
-    n_channels = 4
+    n_channels = 5
     n_classes = len(VOTE_NAMES)
 
     # Create Network
@@ -313,8 +313,8 @@ def train_config(hparams):
         data_dir=hparams["config"]["data_dir"],
         annotations=pd.read_csv(hparams["config"]["train_ann"]),
         augmentation=TransformCompose(
-            TransformIterable(["EEG"], t.AddGaussianNoise(0.15))
-            TransformIterable(["EEG"], t.RandomSaggitalFlipNpArray(0.3))
+            TransformIterable(["EEG"], t.AddGaussianNoise(0.15)),
+            TransformIterable(["EEG"], t.RandomSaggitalFlipNpArray(0.3)),
         ),
         transform=TransformCompose(
             *transforms(hparams),

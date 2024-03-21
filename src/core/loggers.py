@@ -6,7 +6,7 @@ from typing import Any, Dict
 
 from pytorch_lightning.loggers import TensorBoardLogger
 
-from src.hms_brain_activity.paths import get_task_dir_name
+from hms_brain_activity.paths import get_task_dir_name
 
 try:
     from clearml import Task

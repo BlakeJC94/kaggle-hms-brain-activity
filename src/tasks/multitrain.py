@@ -3,8 +3,8 @@ import os
 import concurrent.futures as cf
 from typing import List, Optional
 
-from src.hms_brain_activity import logger
-from src.tasks.train import train
+from hms_brain_activity import logger
+from tasks.train import train
 
 logger = logger.getChild(__name__)
 

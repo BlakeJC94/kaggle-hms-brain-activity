@@ -20,7 +20,7 @@ hparams = {
         "train_ann": "./data/processed/two_stage_prob_cross_val/train_many.csv",
         "val_ann": "./data/processed/two_stage_prob_cross_val/val_many.csv",
         "sample_rate": 200.0,
-        "freq_res": 0.5,
+        "freq_resolution": 0.5,
         "bandpass_low": 0.5,
         "bandpass_high": 70.0,
         "learning_rate": 4 * 1e-3,

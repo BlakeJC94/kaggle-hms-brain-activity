@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 from torch.utils.data import Dataset
 
-from src.core.datasets import BaseDataset, CollateData
-from src.hms_brain_activity.globals import CHANNEL_NAMES, VOTE_NAMES
+from core.datasets import BaseDataset, CollateData
+from hms_brain_activity.globals import CHANNEL_NAMES, VOTE_NAMES
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ class HmsReaderMixin(Dataset):
             label = annotation[self.vote_names].to_numpy()
 
         label = np.nan_to_num(label, self.nan_val)
-        return np.expand_dims(label.astype(int), -1)
+        return label.astype(int)
 
 
 class HmsDataset(BaseDataset, HmsReaderMixin):
