@@ -362,10 +362,11 @@ class DoubleBananaMontageNpArray(_BaseMontageNpArray):
 
 
 class RandomSaggitalFlipNpArray(_BaseMontageNpArray):
-    def __init__(self):
+    def __init__(self, p=0.5):
         self.montage = [
             (self.saggital_flip_channel(ch), "") for ch in CHANNEL_NAMES[:-1]
         ]
+        self.p = p
         super().__init__()
 
     @staticmethod
@@ -378,7 +379,7 @@ class RandomSaggitalFlipNpArray(_BaseMontageNpArray):
         return "".join([pos, str(digit + translation)])
 
     def compute(self, x, md):
-        if random.random() < 0.5:
+        if random.random() < self.p:
             x, md = super().compute(x, md)
         return x, md
 
@@ -394,4 +395,25 @@ class RandomScale(_BaseTransform):
         size = x.shape[:-1] if self.per_channel else x.shape[:-2]
         scale = self.min_scale + (self.max_scale - self.min_scale) * torch.rand(size)
         x = x * np.expand_dims(scale, -1)
+        return x, md
+
+    ...
+
+
+class AddGaussianNoise(_BaseTransform):
+    def __init__(self, p: float, max_amplitude: float = 0.5, min_amplitude: float = 0.001):
+        super().__init__()
+        self.p = p
+        self.min_amplitude = min_amplitude
+        self.max_amplitude = max_amplitude
+
+    def compute(self, x, md):
+        n_channels, n_timesteps = x.shape[-2:]
+        noise = np.zeros((n_channels, n_timesteps))
+        for ch_idx in range(n_channels):
+            if np.random.rand() < self.p:
+                amp_delta = self.max_amplitude - self.min_amplitude
+                amp = self.min_amplitude + np.random.rand() * amp_delta
+                noise[ch_idx, :] = amp * np.random.randn(n_timesteps)
+        x = x + noise
         return x, md
