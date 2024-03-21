@@ -7,7 +7,7 @@ import torch
 from scipy import signal
 from torch import nn
 
-from src.hms_brain_activity.core.transforms import _BaseTransform
+from src.core.transforms import _BaseTransform
 from src.hms_brain_activity.globals import CHANNEL_NAMES
 
 

@@ -28,8 +28,8 @@ from scipy.signal.windows import dpss
 
 from src.hms_brain_activity import metrics as m
 from src.hms_brain_activity import transforms as t
-from src.hms_brain_activity.core.modules import PredictModule, TrainModule
-from src.hms_brain_activity.core.transforms import (
+from src.core.modules import PredictModule, TrainModule
+from src.core.transforms import (
     DataTransform,
     TransformCompose,
     TransformIterable,
