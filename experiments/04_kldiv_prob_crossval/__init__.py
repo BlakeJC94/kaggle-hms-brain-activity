@@ -16,15 +16,11 @@ from torchaudio.transforms import Spectrogram
 from torchmetrics import MeanSquaredError
 from torchvision.models.efficientnet import efficientnet_v2_m
 
+from src.core.modules import PredictModule, TrainModule
+from src.core.transforms import DataTransform, TransformCompose, TransformIterable, _BaseTransform
 from src.hms_brain_activity import metrics as m
 from src.hms_brain_activity import transforms as t
-from src.hms_brain_activity.core.modules import PredictModule, TrainModule
-from src.hms_brain_activity.core.transforms import (
-    DataTransform,
-    TransformCompose,
-    TransformIterable,
-    _BaseTransform,
-)
+from src.hms_brain_activity.callbacks import SubmissionWriter
 from src.hms_brain_activity.datasets import HmsDataset, PredictHmsDataset
 from src.hms_brain_activity.globals import VOTE_NAMES
 
@@ -407,4 +403,7 @@ def predict_config(hparams, predict_args):
             num_workers=num_workers(hparams),
             shuffle=False,
         ),
+        callbacks=[
+            SubmissionWriter("./"),
+        ]
     )

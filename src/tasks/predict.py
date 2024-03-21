@@ -5,8 +5,7 @@ from typing import List
 import pytorch_lightning as pl
 
 from src.hms_brain_activity import logger
-from src.hms_brain_activity.core.utils import import_script_as_module, print_dict
-from src.hms_brain_activity.core.callbacks import SubmissionWriter
+from src.core.utils import import_script_as_module, print_dict
 
 logger = logger.getChild(__name__)
 
@@ -34,9 +33,7 @@ def predict(hparams_path: str, predict_args: List[str]):
     config = config_fn(hparams, predict_args)
 
     trainer = pl.Trainer(
-        callbacks=[
-            SubmissionWriter("./"),
-        ]
+        callbacks=config.get("callbacks", []),
     )
     trainer.predict(
         config["model"],
