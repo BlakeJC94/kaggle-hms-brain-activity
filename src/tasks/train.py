@@ -54,6 +54,8 @@ def train(
 
     logger.info(f"Process ID: {os.getpid()}")
 
+    if gpu_device is None and torch.cuda.is_available():
+        gpu_device = 0
     logger.info(f"GPU device: {gpu_device}")
     if dev_run:
         logger.info("DEV RUN")
