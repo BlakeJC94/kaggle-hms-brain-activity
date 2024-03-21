@@ -300,7 +300,7 @@ def scheduler_factory(hparams, *args, **kwargs):
     return {
         "scheduler": optim.lr_scheduler.CosineAnnealingWarmRestarts(
             *args,
-            T_0=6,
+            T_0=7,
             eta_min=1e-6,
             **kwargs,
         ),
