@@ -7,11 +7,11 @@ import pytorch_lightning as pl
 import torch
 from clearml import Task
 
-from src.hms_brain_activity import logger
-from src.core.callbacks import EpochProgress, NanMonitor, PidMonitor
-from src.core.loggers import ClearMlLogger
-from src.core.utils import import_script_as_module, print_dict
-from src.hms_brain_activity.paths import ARTIFACTS_DIR, get_task_dir_name
+from hms_brain_activity import logger
+from core.callbacks import EpochProgress, NanMonitor, PidMonitor
+from core.loggers import ClearMlLogger
+from core.utils import import_script_as_module, print_dict
+from hms_brain_activity.paths import ARTIFACTS_DIR, get_task_dir_name
 
 logger = logger.getChild(__name__)
 

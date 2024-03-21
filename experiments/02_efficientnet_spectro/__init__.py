@@ -30,18 +30,18 @@ from torchaudio.transforms import Spectrogram
 from torchmetrics import MeanSquaredError
 from torchvision.models.efficientnet import efficientnet_v2_s
 
-from src.hms_brain_activity import metrics as m
-from src.hms_brain_activity import transforms as t
-from src.core.modules import PredictModule, TrainModule
-from src.core.transforms import (
+from hms_brain_activity import metrics as m
+from hms_brain_activity import transforms as t
+from core.modules import PredictModule, TrainModule
+from core.transforms import (
     DataTransform,
     TransformCompose,
     TransformIterable,
     _BaseTransform,
 )
-from src.hms_brain_activity.datasets import HmsDataset, PredictHmsDataset
-from src.hms_brain_activity.globals import VOTE_NAMES
-from src.hms_brain_activity.paths import DATA_PROCESSED_DIR
+from hms_brain_activity.datasets import HmsDataset, PredictHmsDataset
+from hms_brain_activity.globals import VOTE_NAMES
+from hms_brain_activity.paths import DATA_PROCESSED_DIR
 
 
 class PostProcessSpectrograms(_BaseTransform):

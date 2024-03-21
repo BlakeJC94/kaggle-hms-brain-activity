@@ -4,8 +4,8 @@ from typing import List
 
 import pytorch_lightning as pl
 
-from src.hms_brain_activity import logger
-from src.core.utils import import_script_as_module, print_dict
+from hms_brain_activity import logger
+from core.utils import import_script_as_module, print_dict
 
 logger = logger.getChild(__name__)
 

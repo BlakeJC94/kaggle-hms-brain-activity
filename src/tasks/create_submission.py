@@ -7,7 +7,7 @@ from typing import List
 
 import git
 import torch
-from src.hms_brain_activity import logger
+from hms_brain_activity import logger
 
 logger = logger.getChild(__name__)
 
