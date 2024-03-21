@@ -195,7 +195,9 @@ def model_config(hparams):
     return nn.Sequential(
         MultiTaperSpectrogram(
             int(hparams["config"]["sample_rate"]),
-            int(hparams["config"]["sample_rate"] / hparams['config']['freq_resolution']),
+            int(
+                hparams["config"]["sample_rate"] / hparams["config"]["freq_resolution"]
+            ),
             hop_length=int(hparams["config"]["sample_rate"]) // 4,
             center=False,
             power=2,
@@ -206,10 +208,10 @@ def model_config(hparams):
         AggregateFrequencies(
             hparams["config"]["sample_rate"],
             bands=[
-                (0.5, 4),   # Delta
-                (4, 8),     # Theta
-                (8, 13),    # Alpha
-                (13, 30),   # Beta
+                (0.5, 4),  # Delta
+                (4, 8),  # Theta
+                (8, 13),  # Alpha
+                (13, 30),  # Beta
                 (30, 100),  # Gamma
             ],
         ),
@@ -300,10 +302,10 @@ def optimizer_factory(hparams, *args, **kwargs):
 
 def scheduler_factory(hparams, *args, **kwargs):
     return {
-        "scheduler": optim.lr_scheduler.MultiStepLR(
+        "scheduler": optim.lr_scheduler.CosineAnnealingWarmRestarts(
             *args,
-            milestones=hparams["config"]["milestones"],
-            gamma=hparams["config"]["gamma"],
+            T_0=6,
+            eta_min=1e-6,
             **kwargs,
         ),
         "monitor": hparams["config"]["monitor"],
@@ -315,7 +317,8 @@ def train_config(hparams):
         data_dir=hparams["config"]["data_dir"],
         annotations=pd.read_csv(hparams["config"]["train_ann"]),
         augmentation=TransformCompose(
-            TransformIterable(["EEG"], t.RandomSaggitalFlipNpArray())
+            TransformIterable(["EEG"], t.AddGaussianNoise(0.15))
+            TransformIterable(["EEG"], t.RandomSaggitalFlipNpArray(0.3))
         ),
         transform=TransformCompose(
             *transforms(hparams),
