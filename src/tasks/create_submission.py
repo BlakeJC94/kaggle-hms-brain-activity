@@ -53,8 +53,7 @@ def create_submission(hparams_path: str, predict_args: List[str]):
         patch = repo.git.execute(["git", "diff", "--", *CODE_DIRS, *MD_FILES])
         zip_suffix = "_unstaged"
 
-    zip_name =
-    f"submission_{dt.strftime('%Y-%m-%d_%H-%M-%S')}_{branch_name}_{commit_sha[:8]}{zip_suffix}.zip"
+    zip_name = f"submission_{dt.strftime('%Y-%m-%d_%H-%M-%S')}_{branch_name}_{commit_sha[:8]}{zip_suffix}.zip"
     logger.info(f"Creating submission '{zip_name}'")
 
     run_script_template = create_run_script_template(
@@ -118,6 +117,7 @@ def create_run_script_template(
         "",
         "predict_args = parser.parse_args().predict_args",
         "predict({hparams_dest}, [*{predict_args}, *predict_args])",
+        "",
     ]
     run_script_template = "\n".join(run_script_template_lines)
     return run_script_template
@@ -127,7 +127,8 @@ def compress_weights(weights_path: Path, tmp_dir):
     ckpt = torch.load(weights_path, map_location="cpu")
     ckpt_new = {"state_dict": ckpt["state_dict"]}
 
-    weights_path_new = tmp_dir / weights_path.name
+    weights_path_new = tmp_dir / weights_path.parts[-4] / weights_path.name
+    weights_path_new.parent.mkdir()
     torch.save(ckpt_new, weights_path_new)
 
     return weights_path_new
@@ -152,8 +153,9 @@ def add_config_to_zip(zf, hparams_path, predict_args, run_script_template):
         for weights_path in predict_args:
             weights_path = Path(weights_path)
             weights_path = compress_weights(weights_path, Path(tmp_dir))
-            weights_dest = CONFIG_DIR / weights_path.name
-            predict_args_dest.append(weights_dest)
+            weights_dest = "/".join(weights_path.parts[-2:])
+            weights_dest = CONFIG_DIR / weights_dest
+            predict_args_dest.append(str(weights_dest))
             logger.info(f"Writing '{weights_path}' to '{weights_dest}'.")
             zf.write(weights_path, weights_dest)
 
