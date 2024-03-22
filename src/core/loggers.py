@@ -83,13 +83,15 @@ class ClearMlLogger(TensorBoardLogger):
         # Start ClearML
         task_init_kwargs = hparams.get("task", {}).get("init", {})
         task_init_kwargs = {
-            **task_init_kwargs,
-            "task_name": task_name,
+            "continue_last_task": False,
+            "reuse_last_task_id": False,
             "auto_connect_frameworks": {
                 "matplotlib": True,
                 "pytorch": False,
                 "tensorboard": True,
             },
+            **task_init_kwargs,
+            "task_name": task_name,
         }
         task = Task.init(**task_init_kwargs)
 

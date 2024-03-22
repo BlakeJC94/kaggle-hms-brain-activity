@@ -168,7 +168,6 @@ def set_hparams_debug_overrides(hparams, dev_run):
     """"""
     # Task overrides
     hparams["task"]["init"]["project_name"] = "test"
-    hparams["task"]["init"]["continue_last_task"] = False
     # Config overrides
     hparams["config"]["num_workers"] = 0
     # Trainer overrides
@@ -211,15 +210,6 @@ def load_weights(
 
     checkpoint_name = ckpt_params.get("checkpoint_name", "last")
     weights_only = bool(ckpt_params.get("weights_only", False))
-    continue_last_task = bool(
-        checkpoint_task_id and (checkpoint_name == "last") and not weights_only
-    )
-    logger.info(f"{continue_last_task = }")
-
-    hparams["task"] = hparams.get("task", {})
-    hparams["task"]["init"] = hparams["task"].get("init", {})
-    if not hparams["task"]["init"].get("continue_last_task") is False:
-        hparams["task"]["init"]["continue_last_task"] = True
 
     # TODO update to use remote checkpoint storage
     prev_task = Task.get_task(task_id=checkpoint_task_id)
