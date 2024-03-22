@@ -42,9 +42,6 @@ def parse() -> argparse.Namespace:
 
 
 def create_submission(hparams_path: str, predict_args: List[str]):
-    weights_path, *_ = predict_args
-    weights_path = Path(weights_path)
-
     dt = datetime.now()
     repo = git.Repo(".")
     commit_sha, branch_name = repo.rev_parse("HEAD").name_rev.split(" ", 1)
@@ -67,9 +64,8 @@ def create_submission(hparams_path: str, predict_args: List[str]):
         has_unstaged_changes,
     )
 
-    with zipfile.ZipFile(zip_name, "w") as zf, tempfile.TemporaryDirectory() as tmp_dir:
-        weights_path = compress_weights(weights_path, Path(tmp_dir))
-        add_config_to_zip(zf, hparams_path, weights_path, run_script_template)
+    with zipfile.ZipFile(zip_name, "w") as zf:
+        add_config_to_zip(zf, hparams_path, predict_args, run_script_template)
 
         for md_file in MD_FILES:
             md_fp = Path(md_file)
@@ -121,7 +117,7 @@ def create_run_script_template(
         "parser.add_argument('predict_args', nargs='*')",
         "",
         "predict_args = parser.parse_args().predict_args",
-        "predict({hparams_dest}, [{weights_dest}, *predict_args])",
+        "predict({hparams_dest}, [*{predict_args}, *predict_args])",
     ]
     run_script_template = "\n".join(run_script_template_lines)
     return run_script_template
@@ -137,27 +133,33 @@ def compress_weights(weights_path: Path, tmp_dir):
     return weights_path_new
 
 
-def add_config_to_zip(zf, hparams_path, weights_path, run_script_template):
+def add_config_to_zip(zf, hparams_path, predict_args, run_script_template):
     hparams_path = Path(hparams_path)
     hparams_dest = CONFIG_DIR / Path(*hparams_path.parts[-2:])
-
-    weights_path = Path(weights_path)
-    weights_dest = CONFIG_DIR / weights_path.name
 
     module_path = hparams_path.parent / "__init__.py"
     module_dest = CONFIG_DIR / Path(*module_path.parts[-2:])
 
     for fp, dest in [
         (hparams_path, hparams_dest),
-        (weights_path, weights_dest),
         (module_path, module_dest),
     ]:
         logger.info(f"Writing '{fp}' to '{dest}'.")
         zf.write(fp, dest)
 
+    predict_args_dest = []
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        for weights_path in predict_args:
+            weights_path = Path(weights_path)
+            weights_path = compress_weights(weights_path, Path(tmp_dir))
+            weights_dest = CONFIG_DIR / weights_path.name
+            predict_args_dest.append(weights_dest)
+            logger.info(f"Writing '{weights_path}' to '{weights_dest}'.")
+            zf.write(weights_path, weights_dest)
+
     run_script = run_script_template.format(
         hparams_dest=repr(str(hparams_dest)),
-        weights_dest=repr(str(weights_dest)),
+        predict_args=repr(predict_args_dest),
     )
     run_fp = Path("run.py")
     logger.info(f"Creating and adding '{run_fp}'.")
