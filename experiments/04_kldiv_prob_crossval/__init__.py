@@ -375,21 +375,35 @@ def output_transforms(hparams):
     ]
 
 
+class Ensemble(nn.ModuleList):
+    def forward(self, x):
+        out = []
+        for model in self:
+            out.append(model(x))
+        out = torch.cat(out, dim=-1)
+        return torch.mean(dim=-1)
+
+
 def predict_config(hparams, predict_args):
+    *weights_paths, data_dir = predict_args
+
+    ensemble = []
+    for weights_path in weights_paths:
+        weights_path = Path(weights_path)
+        ckpt = torch.load(weights_path, map_location="cpu")
+        model = model_config(hparams)
+        model.load_state_dict(ckpt["state_dict"]["model"])
+        ensemble.append(model)
+
     module = PredictModule(
-        model_config(hparams),
+        Ensemble(ensemble),
         transform=TransformCompose(
             *output_transforms(hparams),
             lambda y_pred, md: (y_pred.cpu().numpy(), md),
         ),
     )
 
-    weights_path, *dataset_args = predict_args
-    weights_path = Path(weights_path)
-    ckpt = torch.load(weights_path, map_location="cpu")
-    module.load_state_dict(ckpt["state_dict"])
-
-    data_dir = Path(dataset_args[0]).expanduser()
+    data_dir = Path(data_dir).expanduser()
     predict_dataset = PredictHmsDataset(
         data_dir=data_dir,
         transform=TransformCompose(*transforms(hparams)),
@@ -405,5 +419,5 @@ def predict_config(hparams, predict_args):
         ),
         callbacks=[
             SubmissionWriter("./"),
-        ]
+        ],
     )
