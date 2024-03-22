@@ -79,6 +79,7 @@ class ClearMlLogger(TensorBoardLogger):
             version = int(version_search.group(0))
             max_task_v = max(max_task_v, version)
         task_name = "-v".join([task_name, str(max_task_v + 1)])
+        logger.info(f"Task name: {task_name}")
 
         # Start ClearML
         task_init_kwargs = hparams.get("task", {}).get("init", {})

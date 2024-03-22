@@ -69,15 +69,11 @@ def train(
     config = compile_config(hparams, config_path, pdb, "train_config")
     hparams, config = load_weights(hparams, config)
 
-    # Create task name
-    task_name = get_task_name(hparams_path, dev_run)
-    logger.info(f"Task name: {task_name}")
-
     # Initialise logger
     clearml_logger = ClearMlLogger(
         hparams=hparams,
         config_path=config_path,
-        task_name=task_name,
+        task_name=get_task_name(hparams_path, dev_run),
         root_dir=ARTIFACTS_DIR,
         dev_run=dev_run,
         offline=offline,
