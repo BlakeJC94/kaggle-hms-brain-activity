@@ -20,7 +20,7 @@ hparams = {
         "freq_resolution": 0.5,
         "bandpass_low": 0.5,
         "bandpass_high": 70.0,
-        "learning_rate": 3 * 1e-4,
+        "learning_rate": 7 * 1e-5,
         "weight_decay": 0.02,
         "num_workers": 6,
         "batch_size": 128,
