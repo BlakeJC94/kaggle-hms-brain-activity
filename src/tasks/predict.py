@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import List
 
 import pytorch_lightning as pl
+import torch
 
 from hms_brain_activity import logger
 from core.utils import import_script_as_module, print_dict
@@ -34,6 +35,8 @@ def predict(hparams_path: str, predict_args: List[str]):
 
     trainer = pl.Trainer(
         callbacks=config.get("callbacks", []),
+        accelerator="gpu" if torch.cuda.is_available() else "cpu",
+        devices=[0] if torch.cuda.is_available() else "auto",
     )
     trainer.predict(
         config["model"],
