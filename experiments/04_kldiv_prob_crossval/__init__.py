@@ -380,8 +380,9 @@ class Ensemble(nn.ModuleList):
         out = []
         for model in self:
             out.append(model(x))
-        out = torch.cat(out, dim=-1)
-        return torch.mean(dim=-1)
+        out = torch.stack(out, dim=-1)
+        out = out.mean(dim=-1)
+        return out
 
 
 def predict_config(hparams, predict_args):
@@ -391,8 +392,8 @@ def predict_config(hparams, predict_args):
     for weights_path in weights_paths:
         weights_path = Path(weights_path)
         ckpt = torch.load(weights_path, map_location="cpu")
-        model = model_config(hparams)
-        model.load_state_dict(ckpt["state_dict"]["model"])
+        model = PredictModule(model_config(hparams))
+        model.load_state_dict(ckpt["state_dict"])
         ensemble.append(model)
 
     module = PredictModule(
