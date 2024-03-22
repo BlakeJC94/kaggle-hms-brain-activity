@@ -1,4 +1,5 @@
 # Project-specific ignores
+tmp/*
 lightning_logs/*
 *.ckpt
 *.csv
