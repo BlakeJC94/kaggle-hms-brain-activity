@@ -21,6 +21,13 @@ from torch import nn, optim
 from torch.utils.data import DataLoader
 from torchaudio.transforms import Spectrogram
 from torchmetrics import MeanSquaredError
+from torchmetrics.classification import (
+    BinaryAUROC,
+    BinaryAveragePrecision,
+    BinaryPrecision,
+    BinaryRecall,
+    BinarySpecificity,
+)
 from torchvision.models.efficientnet import efficientnet_b4
 
 
@@ -490,22 +497,43 @@ def transforms(hparams):
 
 
 def metrics(hparams):
+    class_names = ["sz"]
     return {
         "mse": m.MetricWrapper(
-            lambda y_pred, y: (torch.sigmoid(y_pred, dim=1), y),
+            lambda y_pred, y: (torch.sigmoid(y_pred), y),
             MeanSquaredError(),
         ),
         "mean_y_pred": m.MetricWrapper(
-            lambda y_pred, y: (torch.sigmoid(y_pred, dim=1), y),
-            m.MeanProbability(class_names=VOTE_NAMES),
+            lambda y_pred, y: (torch.sigmoid(y_pred), y),
+            m.MeanProbability(class_names=class_names),
         ),
         "mean_y": m.MetricWrapper(
             lambda y_pred, y: (y, y_pred),
-            m.MeanProbability(class_names=VOTE_NAMES),
+            m.MeanProbability(class_names=class_names),
         ),
         "prob_distribution": m.MetricWrapper(
-            lambda y_pred, y: (torch.sigmoid(y_pred, dim=1), y),
-            m.ProbabilityDistribution(class_names=VOTE_NAMES),
+            lambda y_pred, y: (torch.sigmoid(y_pred), y),
+            m.ProbabilityDensity(class_names=class_names),
+        ),
+        "sensitivity-recall-tpr": m.MetricWrapper(
+            lambda y_pred, y: (torch.sigmoid(y_pred), y.int()),
+            BinaryRecall(threshold=0.5),
+        ),
+        "precision-selectivity-tnr": m.MetricWrapper(
+            lambda y_pred, y: (torch.sigmoid(y_pred), y.int()),
+            BinarySpecificity(threshold=0.5),
+        ),
+        "precision-ppv": m.MetricWrapper(
+            lambda y_pred, y: (torch.sigmoid(y_pred), y.int()),
+            BinaryPrecision(threshold=0.5),
+        ),
+        "prauc": m.MetricWrapper(
+            lambda y_pred, y: (torch.sigmoid(y_pred), y.int()),
+            BinaryAveragePrecision(thresholds=50),
+        ),
+        "auroc": m.MetricWrapper(
+            lambda y_pred, y: (torch.sigmoid(y_pred), y.int()),
+            BinaryAUROC(thresholds=50),
         ),
     }
 
