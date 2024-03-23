@@ -551,8 +551,8 @@ def scheduler_factory(hparams, *args, **kwargs):
     return {
         "scheduler": optim.lr_scheduler.CosineAnnealingWarmRestarts(
             *args,
-            T_0=7,
-            eta_min=1e-6,
+            T_0=hparams["config"]["learning_rate_decay_epochs"],
+            eta_min=hparams["config"]["learning_rate_min"],
             **kwargs,
         ),
         "monitor": hparams["config"]["monitor"],
