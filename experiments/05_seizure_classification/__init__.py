@@ -560,9 +560,12 @@ def get_ann(ann_path, data_dir):
             "other_vote",
         ]
     ].copy()
+    ann["eeg_id"] = ann["eeg_id"].astype(str)
     # Transform
-    ann["seizure_cls"] = ((ann["seizure_vote"] / ann[VOTE_NAMES].sum(axis=1)) >= 0.5).astype(float)
-    return ann[
+    ann["seizure_cls"] = (
+        (ann["seizure_vote"] / ann[VOTE_NAMES].sum(axis=1)) >= 0.5
+    ).astype(float)
+    ann = ann[
         [
             "eeg_id",
             "eeg_label_offset_seconds",
@@ -570,12 +573,14 @@ def get_ann(ann_path, data_dir):
             "seizure_cls",
         ]
     ].copy()
+    return ann
 
 
 def get_pos_weight(ann):
     y = ann["seizure_cls"].to_numpy()
     # pos_weight calculated as #neg/#pos
-    return (y==0.).sum() / y.sum()
+    pos_weight = (y == 0.0).sum() / y.sum()
+    return pos_weight
 
 
 def train_config(hparams):
