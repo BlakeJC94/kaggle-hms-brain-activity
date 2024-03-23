@@ -591,17 +591,19 @@ def get_ann(ann_path, data_dir):
     return ann
 
 
-def get_pos_weight(ann):
-    y = ann["seizure_cls"].to_numpy()
+def get_pos_weight(ann, vote_names):
+    y = ann[vote_names].to_numpy()
     # pos_weight calculated as #neg/#pos
-    pos_weight = (y == 0.0).sum() / y.sum()
-    return pos_weight
+    pos_weight = (y == 0.0).sum(axis=0) / y.sum(axis=0)
+    return torch.Tensor(pos_weight).float()
 
 
 def train_config(hparams):
     data_dir = hparams["config"]["data_dir"]
     train_ann = get_ann(hparams["config"]["train_ann"], data_dir)
-    pos_weight = torch.Tensor([get_pos_weight(train_ann)]).float()
+
+    vote_names = ["seizure_cls"]
+    pos_weight = get_pos_weight(train_ann, vote_names)
 
     train_dataset = HmsDataset(
         data_dir=data_dir,
@@ -612,16 +614,16 @@ def train_config(hparams):
         transform=TransformCompose(
             *transforms(hparams),
         ),
-        vote_names=["seizure_cls"],
+        vote_names=vote_names,
     )
 
     val_dataset = HmsDataset(
-        data_dir=hparams["config"]["data_dir"],
+        data_dir=data_dir,
         annotations=get_ann(hparams["config"]["val_ann"], data_dir),
         transform=TransformCompose(
             *transforms(hparams),
         ),
-        vote_names=["seizure_cls"],
+        vote_names=vote_names,
     )
 
     return dict(
