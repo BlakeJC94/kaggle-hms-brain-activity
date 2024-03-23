@@ -30,3 +30,9 @@ Terminology from provided reference:
 >   the bottom of the waveform and still be rhythmic (but would no longer be sinusoidal). Irregular
 >   or polymorphic delta should not be reported as RDA.
 > * RDA: Rhythmic activity 0.5 to <=4.0 Hz.
+
+
+Getting things running on old version of cuda
+```bash
+$ rye run pip install torch==1.12.1+cu102 torchvision==0.13.1+cu102 --extra-index-url https://download.pytorch.org/whl/cu102
+```
