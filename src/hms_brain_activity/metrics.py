@@ -162,7 +162,7 @@ class ProbabilityDistribution(_BaseProbabilityPlotMetric):
     def update(self, y_pred, y):
         for class_idx, hist_idx in product(range(self.n_classes), range(2)):
             # Histogram pos/negative class (left preds where target class is highest, right preds else)
-            mask = y[:, :].argmax(1) == class_idx
+            mask = y[:, class_idx] > 0.5
             if hist_idx == 1:
                 mask = ~mask
             self.histogram[class_idx, hist_idx, :] += torch.histc(
