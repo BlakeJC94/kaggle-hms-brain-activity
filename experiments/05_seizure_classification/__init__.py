@@ -404,10 +404,7 @@ class MyModel(nn.Module):
         )
         _conv0.weight = nn.init.kaiming_normal_(_conv0.weight, mode="fan_out")
         net.features[0][0] = _conv0
-        self.model_spectrogram = nn.Sequential(
-            spectrogram_transform,
-            net,
-        )
+        self.model_spectrogram = net
 
         # Create network for head
         self.head = nn.Sequential(
@@ -418,8 +415,13 @@ class MyModel(nn.Module):
         )
 
     def forward(self, x):
-        y_hat_sp = self.model_spectrogram(x)
-        y_hat_ts = self.model_time_series(x)
+        xs = self.spectrogram_transform(x) / 10
+        y_hat_sp = self.model_spectrogram(xs)
+
+        x[:, :-1, ...] *= 1 / (35 * 1.5)
+        x[:, -1:, ...] *= 1 / 1e4
+        y_hat_ts = self.model_time_series(x).squeeze(-1)
+
         y_hat = torch.concat([y_hat_sp, y_hat_ts], dim=-1).unsqueeze(-1)
         y_hat = self.head(y_hat)
         return y_hat.squeeze(-1)
@@ -481,7 +483,6 @@ def transforms(hparams):
                 t.Unpad(padlen=3 * hparams["config"]["sample_rate"]),
             ]
         ],
-        t.Scale({"EEG": 1 / (35 * 1.5), "ECG": 1 / 1e4}),
         TransformIterable(["EEG"], t.DoubleBananaMontageNpArray()),
         t.JoinArrays(),
         t.ToTensor(),
@@ -645,7 +646,7 @@ def num_workers(hparams) -> int:
 def output_transforms(hparams):
     return [
         lambda y_pred, md: (y_pred.to(torch.double), md),
-        lambda y_pred, md: (torch.sigmoid(y_pred, axis=1), md),
+        lambda y_pred, md: (torch.sigmoid(y_pred), md),
     ]
 
 
