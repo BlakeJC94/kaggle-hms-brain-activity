@@ -411,14 +411,7 @@ class MyModel(nn.Module):
 
         # Create network for head
         self.head = nn.Sequential(
-            nn.Conv1d(
-                n_classes * 2, n_classes * 4, kernel_size=1
-            ),
-            nn.BatchNorm1d(n_classes * 4),
-            nn.LeakyReLU(),
-            nn.Conv1d(
-                n_classes * 4, n_classes * 2, kernel_size=1
-            ),
+            nn.Conv1d(n_classes * 2, n_classes * 2, kernel_size=1),
             nn.BatchNorm1d(n_classes * 2),
             nn.LeakyReLU(),
             nn.Conv1d(n_classes * 2, n_classes, kernel_size=1),
