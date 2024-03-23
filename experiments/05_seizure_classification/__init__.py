@@ -21,7 +21,7 @@ from torch import nn, optim
 from torch.utils.data import DataLoader
 from torchaudio.transforms import Spectrogram
 from torchmetrics import MeanSquaredError
-from torchvision.models.efficientnet import efficientnet_v2_m
+from torchvision.models.efficientnet import efficientnet_b4
 
 
 ## Spectrogram transforms
@@ -392,7 +392,7 @@ class MyModel(nn.Module):
         )
 
         # Create network for spectrogram (replace first conv layer)
-        net = efficientnet_v2_m(num_classes=n_classes)
+        net = efficientnet_b4(num_classes=n_classes)
         _conv0_prev = net.features[0][0]
         _conv0 = nn.Conv2d(
             n_channels,
