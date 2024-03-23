@@ -141,7 +141,7 @@ class TrimMaxFreq(nn.Module):
         return x
 
 
-## Time series model TODO
+## Time series model
 class TanhClip(nn.Module):
     def __init__(self, abs_bound):
         super().__init__()
@@ -434,7 +434,7 @@ class MyModel(nn.Module):
         return y_hat.squeeze(-1)
 
 
-##
+## Config
 
 
 def model_config(hparams):
