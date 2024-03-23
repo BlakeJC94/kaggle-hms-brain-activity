@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, List
 
 import numpy as np
 import pandas as pd
@@ -50,11 +50,13 @@ class HmsDataset(BaseDataset, HmsReaderMixin):
         annotations: pd.DataFrame,
         augmentation: Optional[Callable] = None,
         transform: Optional[Callable] = None,
+        vote_names: Optional[List[str]] = None,
     ):
         self.data_dir = Path(data_dir).expanduser()
         self.annotations = annotations
         self.augmentation = augmentation
         self.transform = transform
+        self.vote_names = vote_names or VOTE_NAMES
         assert self.data_dir.exists()
 
     def __len__(self):
@@ -63,7 +65,7 @@ class HmsDataset(BaseDataset, HmsReaderMixin):
     def get_raw_data(self, i: int) -> Any:
         annotation = self.annotations.iloc[i]
 
-        start_secs = annotation.get("eeg_label_offset_secs", 0)
+        start_secs = annotation["eeg_label_offset_secs"]
         start = int(start_secs * self.sample_rate)
         duration = int(self.sample_rate * self.sample_secs)
 
@@ -101,3 +103,10 @@ class PredictHmsDataset(HmsDataset):
 
     def get_raw_label(self, i: int) -> Any:
         return None
+
+    def get_raw_data(self, i: int) -> Any:
+        annotation = self.annotations.iloc[i]
+        duration = int(self.sample_rate * self.sample_secs)
+        eeg_id = annotation["eeg_id"]
+        eeg_path = self.data_dir / f"{eeg_id}.parquet"
+        return self.read_data(eeg_path, 0, duration)
