@@ -142,15 +142,6 @@ class TrimMaxFreq(nn.Module):
 
 
 ## Time series model
-class TanhClip(nn.Module):
-    def __init__(self, abs_bound):
-        super().__init__()
-        self.abs_bound = abs_bound
-
-    def forward(self, x):
-        return torch.tanh(x / self.abs_bound) * self.abs_bound
-
-
 class BasicBlock(nn.Module):
     def __init__(
         self,
@@ -380,16 +371,14 @@ class Backbone(nn.Module):
 
 ## Ensemble
 class MyModel(nn.Module):
-    def __init__(self, n_channels, n_classes, spectrogram_transform, tanh_clip):
+    def __init__(self, n_channels, n_classes, spectrogram_transform):
         super().__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.spectrogram_transform = spectrogram_transform
-        self.tanh_clip = tanh_clip
 
         # Create network for time series
         self.model_time_series = nn.Sequential(
-            TanhClip(tanh_clip),
             Backbone(
                 n_channels=n_channels,
                 n_classes=n_classes,
@@ -422,11 +411,12 @@ class MyModel(nn.Module):
         )
 
     def forward(self, x):
-        xs = self.spectrogram_transform(x) / 10
+        xs = self.spectrogram_transform(x) / 10  # Spectrogram scale
         y_hat_sp = self.model_spectrogram(xs)
 
-        x[:, :-1, ...] *= 1 / (35 * 1.5)
-        x[:, -1:, ...] *= 1 / 1e4
+        x[:, :-1, ...] *= 1 / (35 * 1.5)  # EEG Scale
+        x[:, -1:, ...] *= 1 / 1e4  # ECG Scale
+        x = torch.tanh(x / 4) * 4
         y_hat_ts = self.model_time_series(x).squeeze(-1)
 
         y_hat = torch.concat([y_hat_sp, y_hat_ts], dim=-1).unsqueeze(-1)
@@ -435,8 +425,6 @@ class MyModel(nn.Module):
 
 
 ## Config
-
-
 def model_config(hparams):
     n_channels = 19  # 18 bipolar EEG chs, 1 ECG ch
     n_classes = 1
@@ -459,7 +447,6 @@ def model_config(hparams):
         n_channels=n_channels,
         n_classes=n_classes,
         spectrogram_transform=spectrogram_transform,
-        tanh_clip=4,
     )
 
 
