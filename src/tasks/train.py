@@ -65,10 +65,7 @@ def train(
     if offline:
         logger.info("OFFLINE")
 
-    # Get config from hparams
     hparams, config_path = get_hparams_and_config_path(hparams_path, dev_run)
-    config = compile_config(hparams, config_path, pdb, "train_config")
-    hparams, config = load_weights(hparams, config)
 
     # Initialise logger
     clearml_logger = ClearMlLogger(
@@ -85,6 +82,10 @@ def train(
     logger.info("hparams =")
     logger.info(print_dict(hparams))
     logger.info(f"Using config at '{config_path}'")
+
+    # Compile config from hparams
+    config = compile_config(hparams, config_path, pdb, "train_config")
+    hparams, config = load_weights(hparams, config)
 
     # Initialise callbacks
     callbacks = [
