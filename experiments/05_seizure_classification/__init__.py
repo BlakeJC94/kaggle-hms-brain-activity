@@ -12,6 +12,7 @@ import pytorch_lightning as pl
 import torch
 from core.modules import TrainModule
 from core.transforms import TransformCompose, TransformIterable
+from hms_brain_activity import logger
 from hms_brain_activity import metrics as m
 from hms_brain_activity import transforms as t
 from hms_brain_activity.datasets import HmsDataset
@@ -29,6 +30,8 @@ from torchmetrics.classification import (
     BinarySpecificity,
 )
 from torchvision.models.efficientnet import efficientnet_b4
+
+logger = logger.getChild(Path(__file__).parent.name)
 
 
 ## Spectrogram transforms
@@ -604,6 +607,8 @@ def train_config(hparams):
 
     vote_names = ["seizure_cls"]
     pos_weight = get_pos_weight(train_ann, vote_names)
+    for n, v in zip(vote_names, pos_weight):
+        logger.info(f"weight {n}: {v}")
 
     train_dataset = HmsDataset(
         data_dir=data_dir,
