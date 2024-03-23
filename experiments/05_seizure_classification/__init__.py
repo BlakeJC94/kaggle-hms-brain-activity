@@ -2,19 +2,19 @@
 
 import os
 from functools import partial
+from math import ceil, floor, sqrt
 from pathlib import Path
-from typing import List, Tuple
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
 import torch
-from core.modules import PredictModule, TrainModule
-from core.transforms import DataTransform, TransformCompose, TransformIterable, _BaseTransform
+from core.modules import TrainModule
+from core.transforms import TransformCompose, TransformIterable
 from hms_brain_activity import metrics as m
 from hms_brain_activity import transforms as t
-from hms_brain_activity.callbacks import SubmissionWriter
-from hms_brain_activity.datasets import HmsDataset, PredictHmsDataset
+from hms_brain_activity.datasets import HmsDataset
 from hms_brain_activity.globals import VOTE_NAMES
 from scipy.signal.windows import dpss
 from torch import nn, optim
@@ -222,7 +222,6 @@ class UpConvBlock(nn.Sequential):
         )
         return super().forward(x)
 
-from math import floor, ceil, sqrt
 
 class DecoderBlock(nn.Module):
     def __init__(
@@ -291,20 +290,36 @@ class Backbone(nn.Module):
         self.encoder = nn.ModuleList(
             [
                 EncoderBlock(n_channels, filters[0], kernel_size, 1, padding=padding),
-                EncoderBlock(filters[0], filters[1], kernel_size, pools[0], padding=padding),
-                EncoderBlock(filters[1], filters[2], kernel_size, pools[1], padding=padding),
-                EncoderBlock(filters[2], filters[3], kernel_size, pools[2], padding=padding),
+                EncoderBlock(
+                    filters[0], filters[1], kernel_size, pools[0], padding=padding
+                ),
+                EncoderBlock(
+                    filters[1], filters[2], kernel_size, pools[1], padding=padding
+                ),
+                EncoderBlock(
+                    filters[2], filters[3], kernel_size, pools[2], padding=padding
+                ),
             ]
         )
 
-        self.bridge = EncoderBlock(filters[3], filters[4], kernel_size, pools[3], padding=padding)
+        self.bridge = EncoderBlock(
+            filters[3], filters[4], kernel_size, pools[3], padding=padding
+        )
 
         self.decoder = nn.ModuleList(
             [
-                DecoderBlock(filters[4], filters[3], pools[3], kernel_size, padding=padding),
-                DecoderBlock(filters[3], filters[2], pools[2], kernel_size, padding=padding),
-                DecoderBlock(filters[2], filters[1], pools[1], kernel_size, padding=padding),
-                DecoderBlock(filters[1], filters[0], pools[0], kernel_size, padding=padding),
+                DecoderBlock(
+                    filters[4], filters[3], pools[3], kernel_size, padding=padding
+                ),
+                DecoderBlock(
+                    filters[3], filters[2], pools[2], kernel_size, padding=padding
+                ),
+                DecoderBlock(
+                    filters[2], filters[1], pools[1], kernel_size, padding=padding
+                ),
+                DecoderBlock(
+                    filters[1], filters[0], pools[0], kernel_size, padding=padding
+                ),
             ]
         )
 
@@ -323,9 +338,10 @@ class Backbone(nn.Module):
 
     def _init_conv_weight_bias(self, module):
         if isinstance(module, (torch.nn.Conv1d)):
-            nn.init.kaiming_normal_(module.weight, mode="fan_out", nonlinearity="leaky_relu")
+            nn.init.kaiming_normal_(
+                module.weight, mode="fan_out", nonlinearity="leaky_relu"
+            )
             nn.init.constant_(module.bias, 0.01)
-            print("Updated", module)
 
     def _init_bn_weight(self, module):
         if isinstance(module, BasicBlock):
@@ -367,14 +383,13 @@ class MyModel(nn.Module):
         # Create network for time series
         self.model_time_series = nn.Sequential(
             TanhClip(tanh_clip),
-            BackBone(
+            Backbone(
                 n_channels=n_channels,
                 n_classes=n_classes,
                 padding="valid",
             ),
-            ...
+            nn.AdaptiveAvgPool1d(1),
         )
-        ...
 
         # Create network for spectrogram (replace first conv layer)
         net = efficientnet_v2_m(num_classes=n_classes)
