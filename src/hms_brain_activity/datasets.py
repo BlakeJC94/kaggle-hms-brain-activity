@@ -65,7 +65,7 @@ class HmsDataset(BaseDataset, HmsReaderMixin):
     def get_raw_data(self, i: int) -> Any:
         annotation = self.annotations.iloc[i]
 
-        start_secs = annotation["eeg_label_offset_secs"]
+        start_secs = annotation["eeg_label_offset_seconds"]
         start = int(start_secs * self.sample_rate)
         duration = int(self.sample_rate * self.sample_secs)
 
