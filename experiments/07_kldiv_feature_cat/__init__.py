@@ -438,11 +438,12 @@ class MyEnsemble(nn.Module):
         seizure_classifier,
         pdrda_classifier,
     ):
+        super().__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.spectrogram_transform = spectrogram_transform
         self.seizure_classifier = seizure_classifier
-        self.pdrda_classifer = pdrda_classifier
+        self.pdrda_classifier = pdrda_classifier
 
         head = MyModel(
             n_channels=n_channels + 3,
@@ -455,21 +456,21 @@ class MyEnsemble(nn.Module):
 
     def forward(self, x):
         # Get preds from upstream networks, don't forget softmax/sigmoid
-        y_hat_seizure = torch.sigmoid(self.seizure_classifier(x), axis=1)
-        y_hat_pdrda = torch.softmax(self.pdrda_classifier(x), axis=1)[:, :-1, ...]
-        y_hat_seizure_pdrda = torch.cat([y_hat_seizure, y_hat_pdrda], axis=1)
+        y_hat_seizure = torch.sigmoid(self.seizure_classifier(x))
+        y_hat_pdrda = torch.softmax(self.pdrda_classifier(x), dim=1)[:, :-1, ...]
+        y_hat_seizure_pdrda = torch.cat([y_hat_seizure, y_hat_pdrda], dim=1)
         # Compute spectrogram and concat mask
         xs = self.spectrogram_transform(x) / 10  # Spectrogram scale
         xs = torch.cat(
             [
-                y_hat_seizure_pdrda.unsqeeze(-1).unsqueeze(-1).expand(
+                y_hat_seizure_pdrda.unsqueeze(-1).unsqueeze(-1).expand(
                     -1,
                     -1,
                     *xs.shape[-2:],
                 ),
                 xs,
             ],
-            axis=1,
+            dim=1,
         )
 
         # Scale timeseries and concat masks
@@ -481,11 +482,11 @@ class MyEnsemble(nn.Module):
                 y_hat_seizure_pdrda.unsqueeze(-1).expand(
                     -1,
                     -1,
-                    *xs.shape[-1:],
+                    *x.shape[-1:],
                 ),
                 x,
             ],
-            axis=1,
+            dim=1,
         )
 
         # Pass through another network
@@ -541,9 +542,6 @@ def model_config(hparams):
         n_classes=3,
         spectrogram_transform=spectrogram_transform,
     )
-    weights = torch.load(
-        Path(hparams["config"]["pdrda_weights"]), map_location="cpu"
-    )
     weights = Path(hparams["config"]["pdrda_weights"])
     if weights.exists():
         logger.info(f"Loading and freezing pdrda weights from '{str(weights)}'")
@@ -598,11 +596,11 @@ def metrics(hparams):
     class_names = VOTE_NAMES
     return {
         "mse": m.MetricWrapper(
-            lambda y_pred, y: (torch.softmax(y_pred, axis=1), y),
+            lambda y_pred, y: (torch.softmax(y_pred, dim=1), y),
             MeanSquaredError(),
         ),
         "mean_y_pred": m.MetricWrapper(
-            lambda y_pred, y: (torch.softmax(y_pred, axis=1), y),
+            lambda y_pred, y: (torch.softmax(y_pred, dim=1), y),
             m.MeanProbability(class_names=class_names),
         ),
         "mean_y": m.MetricWrapper(
@@ -610,13 +608,13 @@ def metrics(hparams):
             m.MeanProbability(class_names=class_names),
         ),
         "cross_entropy": m.MetricWrapper(
-            lambda y_pred, y: (torch.softmax(y_pred, axis=1), y),
+            lambda y_pred, y: (torch.softmax(y_pred, dim=1), y),
             m.PooledMean(
                 nn.CrossEntropyLoss(),
             ),
         ),
         "prob_distribution": m.MetricWrapper(
-            lambda y_pred, y: (torch.softmax(y_pred, axis=1), y),
+            lambda y_pred, y: (torch.softmax(y_pred, dim=1), y),
             m.ProbabilityDensity(class_names=class_names),
         ),
     }
@@ -756,7 +754,7 @@ def num_workers(hparams) -> int:
 def output_transforms(hparams):
     return [
         lambda y_pred, md: (y_pred.to(torch.double), md),
-        lambda y_pred, md: (torch.softmax(y_pred, axis=1), md),
+        lambda y_pred, md: (torch.softmax(y_pred, dim=1), md),
     ]
 
 
