@@ -532,8 +532,8 @@ def model_config(hparams):
         logger.info(f"Loading and freezing seizure weights from '{str(weights)}'")
         weights = torch.load(weights, map_location="cpu")
         seizure_classifier.load_state_dict(weights)
-        for param in seizure_classifier.parameters():
-            param.requires_grad = False
+    for param in seizure_classifier.parameters():
+        param.requires_grad = False
 
     # Load and freeze weights for pdrda classifier
     pdrda_classifier = MyModel(
@@ -549,8 +549,8 @@ def model_config(hparams):
         logger.info(f"Loading and freezing pdrda weights from '{str(weights)}'")
         weights = torch.load(weights, map_location="cpu")
         pdrda_classifier.load_state_dict(weights)
-        for param in pdrda_classifier.parameters():
-            param.requires_grad = False
+    for param in pdrda_classifier.parameters():
+        param.requires_grad = False
 
     return MyEnsemble(
         n_channels=n_channels,
