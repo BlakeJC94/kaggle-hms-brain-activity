@@ -3,7 +3,6 @@ hparams = {
         "init": {
             "project_name": "HMS",
         },
-        # "parent_task_id": "xxx",
     },
     "checkpoint": {
         "checkpoint_task_id": None,
