@@ -499,7 +499,6 @@ def metrics(hparams):
         ),
         "mean_y": m.MetricWrapper(
             lambda y_pred, y: (y, y_pred),
-
             m.MeanProbability(class_names=class_names),
         ),
         "prob_distribution": m.MetricWrapper(
