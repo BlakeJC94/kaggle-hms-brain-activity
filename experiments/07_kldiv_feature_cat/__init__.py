@@ -456,6 +456,8 @@ class MyEnsemble(nn.Module):
 
     def forward(self, x):
         # Get preds from upstream networks, don't forget softmax/sigmoid
+        self.seizure_classifier.eval()
+        self.pdrda_classifier.eval()
         y_hat_seizure = torch.sigmoid(self.seizure_classifier(x))
         y_hat_pdrda = torch.softmax(self.pdrda_classifier(x), dim=1)[:, :-1, ...]
         y_hat_seizure_pdrda = torch.cat([y_hat_seizure, y_hat_pdrda], dim=1)
@@ -555,6 +557,7 @@ def model_config(hparams):
         seizure_classifier.load_state_dict(weights["state_dict"])
     for param in seizure_classifier.parameters():
         param.requires_grad = False
+    seizure_classifier.eval()
 
     # Load and freeze weights for pdrda classifier
     pdrda_classifier = TrainModule(
@@ -574,6 +577,7 @@ def model_config(hparams):
         pdrda_classifier.load_state_dict(weights["state_dict"])
     for param in pdrda_classifier.parameters():
         param.requires_grad = False
+    pdrda_classifier.eval()
 
     return MyEnsemble(
         n_channels=n_channels,
