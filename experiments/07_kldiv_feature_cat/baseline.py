@@ -22,7 +22,7 @@ hparams = {
         "freq_resolution": 0.5,
         "bandpass_low": 0.5,
         "bandpass_high": 70.0,
-        "learning_rate": 5 * 1e-4,
+        "learning_rate": 1.5 * 1e-3,
         "weight_decay": 0.02,
         "learning_rate_decay_epochs": 7,
         "learning_rate_min": 5 * 1e-6,
