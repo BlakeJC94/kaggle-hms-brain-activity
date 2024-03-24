@@ -503,6 +503,11 @@ class KLDivWithLogitsLoss(nn.KLDivLoss):
         return super().forward(y_hat, y)
 
 
+class IdentityModule(nn.Module):
+    def forward(self, x):
+        return x
+
+
 ## Config
 def model_config(hparams):
     n_channels = 19  # 18 bipolar EEG chs, 1 ECG ch
@@ -523,30 +528,50 @@ def model_config(hparams):
     )
 
     # Load and freeze weights for seizure classifier
-    seizure_classifier = MyModel(
+    model = MyModel(
         n_channels=n_channels,
         n_classes=1,
         spectrogram_transform=spectrogram_transform,
+    )
+    model.model_time_series = nn.Sequential(
+        IdentityModule(),
+        Backbone(
+            n_channels=n_channels,
+            n_classes=1,
+            padding="valid",
+        ),
+        nn.AdaptiveAvgPool1d(1),
+    )
+    seizure_classifier = TrainModule(
+        model,
+        loss_function=nn.BCEWithLogitsLoss(),
+        optimizer_factory=partial(optimizer_factory, hparams),
     )
     weights = Path(hparams["config"]["seizure_weights"])
     if weights.exists():
         logger.info(f"Loading and freezing seizure weights from '{str(weights)}'")
         weights = torch.load(weights, map_location="cpu")
-        seizure_classifier.load_state_dict(weights)
+        _ = weights["state_dict"].pop("loss_function.pos_weight")
+        seizure_classifier.load_state_dict(weights["state_dict"])
     for param in seizure_classifier.parameters():
         param.requires_grad = False
 
     # Load and freeze weights for pdrda classifier
-    pdrda_classifier = MyModel(
-        n_channels=n_channels,
-        n_classes=3,
-        spectrogram_transform=spectrogram_transform,
+    pdrda_classifier = TrainModule(
+        MyModel(
+            n_channels=n_channels,
+            n_classes=3,
+            spectrogram_transform=spectrogram_transform,
+        ),
+        loss_function=nn.BCEWithLogitsLoss(),
+        optimizer_factory=partial(optimizer_factory, hparams),
     )
     weights = Path(hparams["config"]["pdrda_weights"])
     if weights.exists():
         logger.info(f"Loading and freezing pdrda weights from '{str(weights)}'")
         weights = torch.load(weights, map_location="cpu")
-        pdrda_classifier.load_state_dict(weights)
+        _ = weights["state_dict"].pop("loss_function.pos_weight")
+        pdrda_classifier.load_state_dict(weights["state_dict"])
     for param in pdrda_classifier.parameters():
         param.requires_grad = False
 
