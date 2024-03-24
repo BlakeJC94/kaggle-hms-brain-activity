@@ -636,12 +636,12 @@ def metrics(hparams):
             lambda y_pred, y: (y, y_pred),
             m.MeanProbability(class_names=class_names),
         ),
-        "cross_entropy": m.MetricWrapper(
-            lambda y_pred, y: (torch.softmax(y_pred, dim=1), y),
-            m.PooledMean(
-                nn.CrossEntropyLoss(),
-            ),
-        ),
+        # "cross_entropy": m.MetricWrapper(
+        #     lambda y_pred, y: (torch.softmax(y_pred, dim=1), y),
+        #     m.PooledMean(
+        #         nn.CrossEntropyLoss(),
+        #     ),
+        # ),
         "prob_distribution": m.MetricWrapper(
             lambda y_pred, y: (torch.softmax(y_pred, dim=1), y),
             m.ProbabilityDensity(class_names=class_names),
