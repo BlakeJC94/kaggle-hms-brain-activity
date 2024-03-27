@@ -25,27 +25,20 @@ import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
 import torch
+from core.modules import PredictModule, TrainModule
+from core.transforms import TransformCompose, TransformIterable
+from hms_brain_activity import metrics as m
+from hms_brain_activity import transforms as t
+from hms_brain_activity.callbacks import SubmissionWriter
+from hms_brain_activity.datasets import HmsDataset, PredictHmsDataset
+from hms_brain_activity.globals import VOTE_NAMES
+from hms_brain_activity.paths import DATA_PROCESSED_DIR
+from scipy.signal.windows import dpss
 from torch import nn, optim
 from torch.utils.data import DataLoader
 from torchaudio.transforms import Spectrogram
 from torchmetrics import MeanSquaredError
 from torchvision.models.efficientnet import efficientnet_v2_s
-from scipy.signal.windows import dpss
-
-
-from hms_brain_activity import metrics as m
-from hms_brain_activity import transforms as t
-from hms_brain_activity.callbacks import SubmissionWriter
-from core.modules import PredictModule, TrainModule
-from core.transforms import (
-    DataTransform,
-    TransformCompose,
-    TransformIterable,
-    _BaseTransform,
-)
-from hms_brain_activity.datasets import HmsDataset, PredictHmsDataset
-from hms_brain_activity.globals import VOTE_NAMES
-from hms_brain_activity.paths import DATA_PROCESSED_DIR
 
 
 class MultiTaperSpectrogram(nn.Module):
@@ -174,6 +167,7 @@ class AggregateSpectrograms(nn.Module):
         ]
         return torch.cat(out, dim=-3)
 
+
 def model_config(hparams):
     n_channels = 4
     n_classes = len(VOTE_NAMES)
@@ -204,7 +198,6 @@ def model_config(hparams):
         ),
         PostProcessSpectrograms(hparams["config"]["sample_rate"], max_frequency=80),
         AggregateSpectrograms(),
-        t.Scale(1/10),
         nn.BatchNorm2d(num_features=n_channels),
         net,
     )
@@ -238,7 +231,9 @@ def transforms(hparams):
             ]
         ],
         TransformIterable(["EEG"], t.DoubleBananaMontageNpArray()),
+        t.Scale({"ECG": 1 / 1e4, "EEG": 1 / (35 * 1.5)}),
         t.JoinArrays(),
+        t.TanhClipNpArray(4),
         t.ToTensor(),
     ]
 
