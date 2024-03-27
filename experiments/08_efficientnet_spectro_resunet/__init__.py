@@ -403,11 +403,12 @@ class Backbone(nn.Module):
 
 ## Ensemble
 class MyModel(nn.Module):
-    def __init__(self, n_channels, n_classes, spectrogram_transform):
+    def __init__(self, n_channels, n_classes, spectrogram_transform, n_spect_channels):
         super().__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.spectrogram_transform = spectrogram_transform
+        self.n_spect_channels = n_spect_channels
 
         # Create network for time series
         self.model_time_series = nn.Sequential(
@@ -423,7 +424,7 @@ class MyModel(nn.Module):
         net = efficientnet_v2_s(num_classes=n_classes)
         _conv0_prev = net.features[0][0]
         _conv0 = nn.Conv2d(
-            5,
+            n_spect_channels,
             _conv0_prev.out_channels,
             _conv0_prev.kernel_size,
             stride=_conv0_prev.stride,
@@ -457,6 +458,7 @@ class MyModel(nn.Module):
 def model_config(hparams):
     n_channels = 19  # 18 bipolar EEG chs, 1 ECG ch
     n_classes = 1
+    n_spect_channels = 5
 
     spectrogram_transform = nn.Sequential(
         MultiTaperSpectrogram(
@@ -468,13 +470,14 @@ def model_config(hparams):
         ),
         PostProcessSpectrograms(hparams["config"]["sample_rate"], max_frequency=80),
         AggregateSpectrograms(),
-        nn.BatchNorm2d(num_features=n_channels),
+        nn.BatchNorm2d(num_features=n_spect_channels),
     )
 
     return MyModel(
         n_channels=n_channels,
         n_classes=n_classes,
         spectrogram_transform=spectrogram_transform,
+        n_spect_channels=n_spect_channels,
     )
 
 
