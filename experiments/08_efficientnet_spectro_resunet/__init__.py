@@ -27,6 +27,7 @@ import pytorch_lightning as pl
 import torch
 from core.modules import PredictModule, TrainModule
 from core.transforms import TransformCompose, TransformIterable
+from hms_brain_activity import logger
 from hms_brain_activity import metrics as m
 from hms_brain_activity import transforms as t
 from hms_brain_activity.callbacks import SubmissionWriter
