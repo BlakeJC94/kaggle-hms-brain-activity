@@ -529,7 +529,7 @@ def model_config(hparams):
         TrimMaxFreq(hparams["config"]["sample_rate"], max_frequency=80),
     )
 
-    # Load and freeze weights for seizure classifier
+    # Load and freeze weights for seizure classifier # TODO Move this step to train_config
     model = MyModel(
         n_channels=n_channels,
         n_classes=1,
@@ -549,7 +549,7 @@ def model_config(hparams):
         loss_function=nn.BCEWithLogitsLoss(),
         optimizer_factory=partial(optimizer_factory, hparams),
     )
-    weights = Path(hparams["config"]["seizure_weights"])
+    weights = Path(hparams["config"].get("seizure_weights", "./dummy.ckpt"))
     if weights.exists():
         logger.info(f"Loading and freezing seizure weights from '{str(weights)}'")
         weights = torch.load(weights, map_location="cpu")
@@ -569,7 +569,7 @@ def model_config(hparams):
         loss_function=nn.BCEWithLogitsLoss(),
         optimizer_factory=partial(optimizer_factory, hparams),
     )
-    weights = Path(hparams["config"]["pdrda_weights"])
+    weights = Path(hparams["config"].get("pdrda_weights", "./dummy.ckpt"))
     if weights.exists():
         logger.info(f"Loading and freezing pdrda weights from '{str(weights)}'")
         weights = torch.load(weights, map_location="cpu")

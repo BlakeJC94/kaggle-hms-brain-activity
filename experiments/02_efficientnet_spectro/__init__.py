@@ -19,6 +19,7 @@ TODO
 import os
 from functools import partial
 from pathlib import Path
+from typing import *
 
 import numpy as np
 import pandas as pd
@@ -29,9 +30,12 @@ from torch.utils.data import DataLoader
 from torchaudio.transforms import Spectrogram
 from torchmetrics import MeanSquaredError
 from torchvision.models.efficientnet import efficientnet_v2_s
+from scipy.signal.windows import dpss
+
 
 from hms_brain_activity import metrics as m
 from hms_brain_activity import transforms as t
+from hms_brain_activity.callbacks import SubmissionWriter
 from core.modules import PredictModule, TrainModule
 from core.transforms import (
     DataTransform,
@@ -44,15 +48,96 @@ from hms_brain_activity.globals import VOTE_NAMES
 from hms_brain_activity.paths import DATA_PROCESSED_DIR
 
 
-class PostProcessSpectrograms(_BaseTransform):
+class MultiTaperSpectrogram(nn.Module):
+    """Create a multi-taper spectrogram transform for time series."""
+
+    def __init__(
+        self,
+        sample_rate: int,
+        n_fft: int,
+        frequency_resolution: float = 1.0,
+        **spectrogram_kwargs,
+    ):
+        super().__init__()
+        self.sample_rate = sample_rate
+        self.n_fft = n_fft
+        self.frequency_resolution = frequency_resolution
+        self.spectrogram_kwargs = {}
+
+        # Get tapers
+        time_bandwidth, num_tapers = self.calculate_num_tapers(
+            self.n_fft,
+            self.sample_rate,
+            frequency_resolution=self.frequency_resolution,
+        )
+
+        # Initialise spectrograms
+        self.taper_spectrograms = nn.ModuleList()
+        for i in range(num_tapers):
+            self.taper_spectrograms.append(
+                Spectrogram(
+                    self.n_fft,
+                    **spectrogram_kwargs,
+                    window_fn=lambda n, idx, **kwargs: torch.from_numpy(
+                        dpss(n, **kwargs).copy()[i]
+                    ),
+                    wkwargs={"idx": i, "NW": time_bandwidth, "Kmax": num_tapers},
+                )
+            )
+
+        # Copy common attributes of Spectrogram
+        _spect = self.taper_spectrograms[0]
+        self.win_length = _spect.win_length
+        self.hop_length = _spect.hop_length
+        self.pad = _spect.pad
+        self.power = _spect.power
+        self.normalized = _spect.normalized
+        self.center = _spect.center
+        self.pad_mode = _spect.pad_mode
+        self.onesided = _spect.onesided
+
+    def n_frames(self, n_timesteps: int) -> int:
+        if self.center:
+            n_timesteps += 2 * self.pad if self.pad else 0
+            return n_timesteps // self.hop_length + 1
+        else:
+            return (n_timesteps - self.win_length) // self.hop_length + 1
+
+    @staticmethod
+    def calculate_num_tapers(
+        n_fft: int, sample_rate: float, frequency_resolution: float
+    ) -> Tuple[int, int]:
+        window_size_seconds = n_fft / sample_rate
+        time_halfbandwidth_product = max(window_size_seconds * frequency_resolution, 1)
+        num_tapers = int(2 * (time_halfbandwidth_product) - 1)
+        return int(time_halfbandwidth_product), num_tapers
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        n_channels, n_timesteps = x.shape[-2:]
+
+        n_freq = self.n_fft // 2 + 1
+        n_frames = self.n_frames(n_timesteps)
+        if x.ndim == 3:
+            batch_size = x.shape[0]
+            xtaper = torch.zeros(batch_size, n_channels, n_freq, n_frames)
+        else:
+            xtaper = torch.zeros(n_channels, n_freq, n_frames)
+        xtaper = xtaper.to(x)  # Ensure tensor is on correct device
+
+        for spectrogram in self.taper_spectrograms:
+            xtaper += spectrogram(x)
+
+        return xtaper / len(self.taper_spectrograms)
+
+
+class PostProcessSpectrograms(nn.Module):
     def __init__(self, sample_rate, max_frequency):
         super().__init__()
         self.sample_rate = sample_rate
         self.max_frequency = max_frequency
 
-    def compute(self, x, md):
-        _num_channels, num_freqs, _num_timesteps = x.shape
-        x = x / self.sample_rate
+    def forward(self, x):
+        num_freqs, _num_timesteps = x.shape[-2:]
 
         # Set near-0 values to a fixed floor to prevent log(tiny value) creating large negative
         # values that obscure the actual meaningful signal
@@ -65,11 +150,17 @@ class PostProcessSpectrograms(_BaseTransform):
         # Leave batch, channel & time dims; slice the frequency dim
         x = x[..., frequency_mask, :]
 
-        return x, md
+        return x
 
 
-class AggregateSpectrograms(_BaseTransform):
-    def compute(self, x, md):
+class KLDivWithLogitsLoss(nn.KLDivLoss):
+    def forward(self, y_hat, y):
+        y_hat = nn.functional.log_softmax(y_hat, dim=1)
+        return super().forward(y_hat, y)
+
+
+class AggregateSpectrograms(nn.Module):
+    def forward(self, x):
         out = [
             torch.nanmean(x[..., sl, :, :], dim=-3, keepdim=True)
             for sl in [
@@ -81,8 +172,7 @@ class AggregateSpectrograms(_BaseTransform):
                 # slice(18, 19),  # ECG
             ]
         ]
-        return torch.cat(out, dim=-3), md
-
+        return torch.cat(out, dim=-3)
 
 def model_config(hparams):
     n_channels = 4
@@ -105,8 +195,18 @@ def model_config(hparams):
     net.features[0][0] = _conv0
 
     return nn.Sequential(
+        MultiTaperSpectrogram(
+            int(hparams["config"]["sample_rate"]),
+            int(hparams["config"]["sample_rate"]),
+            hop_length=int(hparams["config"]["sample_rate"]) // 4,
+            center=False,
+            power=2,
+        ),
+        PostProcessSpectrograms(hparams["config"]["sample_rate"], max_frequency=80),
+        AggregateSpectrograms(),
+        t.Scale(1/10),
+        nn.BatchNorm2d(num_features=n_channels),
         net,
-        nn.LogSoftmax(dim=1),
     )
 
 
@@ -137,48 +237,36 @@ def transforms(hparams):
                 t.Unpad(padlen=2 * hparams["config"]["sample_rate"]),
             ]
         ],
-        t.Scale({"EEG": 1 / (35 * 1.5), "ECG": 1 / 1e4}),
         TransformIterable(["EEG"], t.DoubleBananaMontageNpArray()),
         t.JoinArrays(),
-        t.TanhClipNpArray(4),
         t.ToTensor(),
-        DataTransform(
-            Spectrogram(
-                int(hparams["config"]["sample_rate"]),
-                hop_length=int(hparams["config"]["sample_rate"]),
-                center=False,
-                power=2,
-            ),
-        ),
-        PostProcessSpectrograms(hparams["config"]["sample_rate"], max_frequency=80),
-        AggregateSpectrograms(),
     ]
 
 
 def metrics(hparams):
+    class_names = VOTE_NAMES
     return {
-        "mse": MeanSquaredError(),
+        "mse": m.MetricWrapper(
+            lambda y_pred, y: (torch.softmax(y_pred, dim=1), y),
+            MeanSquaredError(),
+        ),
         "mean_y_pred": m.MetricWrapper(
-            TransformCompose(*output_transforms(hparams)),
-            m.MeanProbability(class_names=VOTE_NAMES),
+            lambda y_pred, y: (torch.softmax(y_pred, dim=1), y),
+            m.MeanProbability(class_names=class_names),
         ),
         "mean_y": m.MetricWrapper(
             lambda y_pred, y: (y, y_pred),
-            m.MeanProbability(class_names=VOTE_NAMES),
+            m.MeanProbability(class_names=class_names),
         ),
-        "cross_entropy": m.MetricWrapper(
-            TransformCompose(*output_transforms(hparams)),
-            m.PooledMean(
-                nn.CrossEntropyLoss(),
-            ),
-        ),
+        # "cross_entropy": m.MetricWrapper(
+        #     lambda y_pred, y: (torch.softmax(y_pred, dim=1), y),
+        #     m.PooledMean(
+        #         nn.CrossEntropyLoss(),
+        #     ),
+        # ),
         "prob_distribution": m.MetricWrapper(
-            TransformCompose(*output_transforms(hparams)),
-            m.ProbabilityDistribution(class_names=VOTE_NAMES),
-        ),
-        "prob_density": m.MetricWrapper(
-            TransformCompose(*output_transforms(hparams)),
-            m.ProbabilityDistribution(class_names=VOTE_NAMES),
+            lambda y_pred, y: (torch.softmax(y_pred, dim=1), y),
+            m.ProbabilityDensity(class_names=class_names),
         ),
     }
 
@@ -200,7 +288,7 @@ def train_config(hparams):
 
     module = TrainModule(
         model_config(hparams),
-        loss_function=nn.KLDivLoss(reduction="batchmean"),
+        loss_function=KLDivWithLogitsLoss(reduction="batchmean"),
         metrics=metrics(hparams),
         optimizer_factory=optimizer_factory,
         scheduler_factory=scheduler_factory,
@@ -264,7 +352,6 @@ def num_workers(hparams) -> int:
 
 def output_transforms(hparams):
     return [
-        lambda y_pred, md: (torch.exp(y_pred), md),
         lambda y_pred, md: (y_pred.to(torch.double), md),
         lambda y_pred, md: (torch.softmax(y_pred, axis=1), md),
     ]
@@ -298,4 +385,7 @@ def predict_config(hparams, predict_args):
             num_workers=num_workers(hparams),
             shuffle=False,
         ),
+        callbacks=[
+            SubmissionWriter("./"),
+        ],
     )
