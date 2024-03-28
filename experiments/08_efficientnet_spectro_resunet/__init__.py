@@ -167,7 +167,7 @@ class AggregateSpectrograms(nn.Module):
                 slice(8, 12),
                 slice(12, 16),
                 # slice(16, 18),  # Sagittal plane EEG
-                slice(18, 19),  # ECG
+                # slice(18, 19),  # ECG
             ]
         ]
         return torch.cat(out, dim=-3)
@@ -456,7 +456,7 @@ class MyModel(nn.Module):
 
 ## Config
 def model_config(hparams):
-    n_channels = 19  # 18 bipolar EEG chs, 1 ECG ch
+    n_channels = 18  # 18 bipolar EEG chs, 1 ECG ch
     n_classes = len(VOTE_NAMES)
     n_spect_channels = 5
 
@@ -510,7 +510,8 @@ def transforms(hparams):
         ],
         TransformIterable(["EEG"], t.DoubleBananaMontageNpArray()),
         t.Scale({"ECG": 1 / 1e4, "EEG": 1 / (35 * 1.5)}),
-        t.JoinArrays(),
+        lambda x, md: (x["EEG"], md),
+        # t.JoinArrays(),
         t.TanhClipNpArray(4),
         t.ToTensor(),
     ]
