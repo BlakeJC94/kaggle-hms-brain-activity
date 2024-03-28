@@ -23,7 +23,7 @@ hparams = {
         "weight_decay": 0.01,
         "num_workers": 10,
         "batch_size": 64,
-        "patience": 20,
+        "patience": 5,
         "milestones": [5, 8],
         "gamma": 0.2,
         "monitor": "loss/validate",
