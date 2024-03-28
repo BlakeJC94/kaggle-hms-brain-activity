@@ -458,7 +458,7 @@ class MyModel(nn.Module):
 def model_config(hparams):
     n_channels = 18  # 18 bipolar EEG chs, 1 ECG ch
     n_classes = len(VOTE_NAMES)
-    n_spect_channels = 5
+    n_spect_channels = 4
 
     spectrogram_transform = nn.Sequential(
         MultiTaperSpectrogram(
