@@ -25,7 +25,7 @@ hparams = {
         "learning_rate_decay_epochs": 7,
         "learning_rate_min": 5 * 1e-6,
         "num_workers": 10,
-        "batch_size": 64,
+        "batch_size": 32,
         "patience": 5,
         "milestones": [5, 8],
         "monitor": "loss/validate",
