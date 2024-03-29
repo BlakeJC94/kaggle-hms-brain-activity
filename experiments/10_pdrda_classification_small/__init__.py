@@ -159,7 +159,7 @@ class AggregateSpectrograms(nn.Module):
 ## Model config
 def model_config(hparams):
     n_channels = 4
-    n_classes = len(VOTE_NAMES)
+    n_classes = 3
 
     # Create Network
     net = efficientnet_v2_s(num_classes=n_classes)

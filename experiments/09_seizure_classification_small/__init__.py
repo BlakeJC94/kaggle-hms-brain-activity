@@ -34,7 +34,6 @@ from torchvision.models.efficientnet import efficientnet_v2_s
 logger = logger.getChild(Path(__file__).parent.name)
 
 
-
 ## Spectrogram transforms
 class MultiTaperSpectrogram(nn.Module):
     """Create a multi-taper spectrogram transform for time series."""
@@ -160,7 +159,7 @@ class AggregateSpectrograms(nn.Module):
 ## Model config
 def model_config(hparams):
     n_channels = 4
-    n_classes = len(VOTE_NAMES)
+    n_classes = 1
 
     # Create Network
     net = efficientnet_v2_s(num_classes=n_classes)
