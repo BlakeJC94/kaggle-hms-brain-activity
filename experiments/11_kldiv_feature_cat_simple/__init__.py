@@ -185,6 +185,7 @@ class MyEnsemble(nn.Module):
         y_hat_seizure_pdrda = torch.cat([y_hat_seizure, y_hat_pdrda], dim=1)
 
         # Compute spectrogram and concat mask
+        xs = self.spectrogram_transform(x)
         xs = torch.cat(
             [
                 y_hat_seizure_pdrda.unsqueeze(-1)
@@ -192,9 +193,9 @@ class MyEnsemble(nn.Module):
                 .expand(
                     -1,
                     -1,
-                    *x.shape[-2:],
+                    *xs.shape[-2:],
                 ),
-                x,
+                xs,
             ],
             dim=1,
         )
