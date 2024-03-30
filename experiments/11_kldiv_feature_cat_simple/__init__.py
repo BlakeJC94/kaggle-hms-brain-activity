@@ -29,7 +29,7 @@ from torchmetrics.classification import (
     MultilabelRecall,
     MultilabelSpecificity,
 )
-from torchvision.models.efficientnet import efficientnet_b4
+from torchvision.models.efficientnet import efficientnet_v2_s
 
 logger = logger.getChild(Path(__file__).parent.name)
 
