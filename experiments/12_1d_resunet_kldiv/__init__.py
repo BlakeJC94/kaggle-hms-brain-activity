@@ -11,13 +11,14 @@ import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
 import torch
-from core.modules import TrainModule
+from core.modules import PredictModule, TrainModule
 from core.transforms import TransformCompose, TransformIterable
 from hms_brain_activity import logger
 from hms_brain_activity import metrics as m
 from hms_brain_activity import transforms as t
-from hms_brain_activity.datasets import HmsDataset
 from hms_brain_activity.globals import VOTE_NAMES
+from hms_brain_activity.callbacks import SubmissionWriter
+from hms_brain_activity.datasets import HmsDataset, PredictHmsDataset
 from scipy.signal.windows import dpss
 from torch import nn, optim
 from torch.utils.data import DataLoader
@@ -30,7 +31,6 @@ from torchmetrics.classification import (
     MultilabelRecall,
     MultilabelSpecificity,
 )
-from torchvision.models.efficientnet import efficientnet_b4
 
 logger = logger.getChild(Path(__file__).parent.name)
 
@@ -612,40 +612,36 @@ def output_transforms(hparams):
     ]
 
 
-# def predict_config(hparams, predict_args):
-#     *weights_paths, data_dir = predict_args
+def predict_config(hparams, predict_args):
+    weights_path, data_dir = predict_args
 
-#     ensemble = []
-#     for weights_path in weights_paths:
-#         weights_path = Path(weights_path)
-#         ckpt = torch.load(weights_path, map_location="cpu")
-#         model = PredictModule(model_config(hparams))
-#         model.load_state_dict(ckpt["state_dict"])
-#         ensemble.append(model)
+    module = PredictModule(
+        model_config(hparams),
+        transform=TransformCompose(
+            *output_transforms(hparams),
+            lambda y_pred, md: (y_pred.cpu().numpy(), md),
+        ),
+    )
 
-#     module = PredictModule(
-#         Ensemble(ensemble),
-#         transform=TransformCompose(
-#             *output_transforms(hparams),
-#             lambda y_pred, md: (y_pred.cpu().numpy(), md),
-#         ),
-#     )
+    weights_path = Path(weights_path)
+    ckpt = torch.load(weights_path, map_location="cpu")
+    module.load_state_dict(ckpt["state_dict"])
 
-#     data_dir = Path(data_dir).expanduser()
-#     predict_dataset = PredictHmsDataset(
-#         data_dir=data_dir,
-#         transform=TransformCompose(*transforms(hparams)),
-#     )
+    data_dir = Path(data_dir).expanduser()
+    predict_dataset = PredictHmsDataset(
+        data_dir=data_dir,
+        transform=TransformCompose(*transforms(hparams)),
+    )
 
-#     return dict(
-#         model=module,
-#         predict_dataloaders=DataLoader(
-#             predict_dataset,
-#             batch_size=hparams["config"]["batch_size"],
-#             num_workers=num_workers(hparams),
-#             shuffle=False,
-#         ),
-#         callbacks=[
-#             SubmissionWriter("./"),
-#         ],
-#     )
+    return dict(
+        model=module,
+        predict_dataloaders=DataLoader(
+            predict_dataset,
+            batch_size=hparams["config"]["batch_size"],
+            num_workers=num_workers(hparams),
+            shuffle=False,
+        ),
+        callbacks=[
+            SubmissionWriter("./"),
+        ],
+    )
